@@ -52,7 +52,7 @@ def run_backtest(
     drawdown = (peak - daily_capital) / peak
     max_drawdown = np.max(drawdown) if len(drawdown) > 0 else 0
 
-    actual_returns = df_test["price_return"].values[:n]
+    actual_returns = df_test["label"].values[:n]
     pred_direction = np.sign(y_pred)
     actual_direction = np.sign(actual_returns)
     win_rate = np.mean(pred_direction == actual_direction) if n > 0 else 0

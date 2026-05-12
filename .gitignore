@@ -29,6 +29,15 @@ data/**/*.csv
 outputs/**/*.pkl
 outputs/**/*.joblib
 outputs/**/*.png
+outputs/**/*.json
+
+# Credentials & secrets
+.env
+credentials.json
+*.key
+
+# Logs
+*.log
 
 # OS
 .DS_Store
