@@ -22,13 +22,12 @@ env/
 .ipynb_checkpoints/
 
 # Data (large files, keep structure)
-data/raw/*.csv
-data/processed/*.csv
-!data/.gitkeep
+data/**/*.csv
+!data/**/.gitkeep
 
 # Model outputs
-outputs/models/*.pkl
-outputs/models/*.joblib
+outputs/**/*.pkl
+outputs/**/*.joblib
 
 # OS
 .DS_Store

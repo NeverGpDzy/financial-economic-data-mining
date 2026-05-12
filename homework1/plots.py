@@ -1,18 +1,11 @@
-"""可视化模块。"""
+"""作业1：可视化。"""
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pathlib import Path
 
 
-def plot_prediction_vs_actual(
-    y_true: np.ndarray,
-    y_pred_dict: dict[str, np.ndarray],
-    title: str = "模型预测值 vs 真实值",
-    save_path: str | None = None,
-):
-    """绘制各模型预测值与真实值对比图。"""
+def plot_prediction_vs_actual(y_true, y_pred_dict, title="模型预测值 vs 真实值", save_path=None):
     fig, ax = plt.subplots(figsize=(14, 5))
     ax.plot(y_true, label="真实值", alpha=0.7, linewidth=1)
     for name, y_pred in y_pred_dict.items():
@@ -28,13 +21,8 @@ def plot_prediction_vs_actual(
     plt.show()
 
 
-def plot_backtest_curves(
-    backtest_results: dict[str, dict],
-    initial_capital: float = 1_000_000,
-    title: str = "2025年回测累计收益曲线",
-    save_path: str | None = None,
-):
-    """绘制各模型回测资金收益曲线。"""
+def plot_backtest_curves(backtest_results, initial_capital=1_000_000,
+                         title="回测累计收益曲线", save_path=None):
     fig, ax = plt.subplots(figsize=(14, 5))
     for name, result in backtest_results.items():
         daily = result["daily_capital"]
@@ -51,8 +39,7 @@ def plot_backtest_curves(
     plt.show()
 
 
-def print_backtest_summary(backtest_results: dict[str, dict]):
-    """打印回测结果汇总表。"""
+def print_backtest_summary(backtest_results):
     rows = []
     for name, r in backtest_results.items():
         rows.append({

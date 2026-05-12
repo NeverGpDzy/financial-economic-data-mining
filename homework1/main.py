@@ -12,22 +12,19 @@
 import sys
 from pathlib import Path
 
-# 将 src 加入路径
-sys.path.insert(0, str(Path(__file__).parent))
+# 将项目根目录加入路径
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
-from src.config import (
+from common.data_fetcher import fetch_all_stocks
+from homework1.config import (
     STOCK_CODES, START_DATE, END_DATE, WINDOW,
     INITIAL_CAPITAL, COMMISSION, BUY_THRESHOLD, SELL_THRESHOLD,
 )
-from src.data.fetch_data import fetch_all_stocks
-from src.features.build_features import build_features
-from src.models.train import train_and_evaluate
-from src.evaluation.backtest import run_backtest
-from src.visualization.plots import (
-    plot_prediction_vs_actual,
-    plot_backtest_curves,
-    print_backtest_summary,
-)
+from homework1.features import build_features
+from homework1.models import train_and_evaluate, get_models
+from homework1.backtest import run_backtest
+from homework1.plots import plot_prediction_vs_actual, plot_backtest_curves, print_backtest_summary
 
 import numpy as np
 import pandas as pd
@@ -39,11 +36,9 @@ def main():
     print("任务1：数据获取")
     print("=" * 50)
 
-    data_dir = Path(__file__).parent / "data" / "raw"
+    data_dir = ROOT / "data" / "homework1"
     stock_data = fetch_all_stocks(STOCK_CODES, START_DATE, END_DATE, save_dir=str(data_dir))
 
-    # 选择第一只股票进行分析（作业要求任选1家）
-    # 可修改此处选择不同股票
     selected_code = STOCK_CODES[0]
     print(f"\n选定股票: {selected_code}")
     df = stock_data[selected_code]
@@ -63,19 +58,16 @@ def main():
     print("任务3：数据划分")
     print("=" * 50)
 
-    # 2024 年数据
     mask_2024 = df_feat.index < "2025-01-01"
     df_2024 = df_feat[mask_2024]
     X_2024 = df_2024[feature_cols]
     y_2024 = df_2024["label"]
 
-    # 2024 年内部划分：前 80% 训练，后 20% 测试
     split_idx = int(len(df_2024) * 0.8)
     X_train, X_test = X_2024.iloc[:split_idx], X_2024.iloc[split_idx:]
     y_train, y_test = y_2024.iloc[:split_idx], y_2024.iloc[split_idx:]
     print(f"2024 训练集: {len(X_train)} 条, 测试集: {len(X_test)} 条")
 
-    # 2025 年数据（回测用）
     mask_2025 = df_feat.index >= "2025-01-01"
     df_2025 = df_feat[mask_2025]
     X_2025 = df_2025[feature_cols]
@@ -89,9 +81,7 @@ def main():
 
     results_2024 = train_and_evaluate(X_train, y_train, X_test, y_test)
 
-    # 用全部 2024 年数据训练最终模型
     print("\n使用全部 2024 年数据训练最终模型...")
-    from src.models.train import get_models
     final_models = get_models()
     for name, model in final_models.items():
         model.fit(X_2024, y_2024)
@@ -125,16 +115,15 @@ def main():
     print("任务6：结果可视化")
     print("=" * 50)
 
-    output_dir = Path(__file__).parent / "outputs" / "figures"
+    output_dir = ROOT / "outputs" / "homework1" / "figures"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 预测效果图
     plot_prediction_vs_actual(
         y_2025.values, pred_dict,
         title=f"{selected_code} 2025年模型预测值 vs 真实值",
         save_path=str(output_dir / "prediction_vs_actual.png"),
     )
 
-    # 回测收益曲线
     plot_backtest_curves(
         backtest_results,
         initial_capital=INITIAL_CAPITAL,
@@ -142,10 +131,8 @@ def main():
         save_path=str(output_dir / "backtest_curves.png"),
     )
 
-    # 汇总表
     print_backtest_summary(backtest_results)
-
-    print("\n所有结果已保存至 outputs/figures/")
+    print(f"\n所有结果已保存至 {output_dir}")
 
 
 if __name__ == "__main__":

@@ -1,28 +1,29 @@
-"""从 baostock 获取股票日线数据。"""
+"""公共数据获取模块。各次作业复用。"""
 
 import baostock as bs
 import pandas as pd
 from pathlib import Path
 
 
-def fetch_stock_data(stock_code: str, start_date: str, end_date: str) -> pd.DataFrame:
-    """获取单只股票的日收盘价（前复权）和成交量。
+def fetch_stock_data(stock_code: str, start_date: str, end_date: str,
+                     fields: str = "date,close,volume") -> pd.DataFrame:
+    """获取单只股票日线数据（前复权）。
 
     Args:
         stock_code: 股票代码，如 "sh.600519"
-        start_date: 起始日期，如 "2024-01-01"
-        end_date: 结束日期，如 "2025-12-31"
+        start_date: 起始日期
+        end_date: 结束日期
+        fields: 查询字段，默认 "date,close,volume"
 
     Returns:
-        DataFrame，包含 date, close, volume 列
+        DataFrame，index 为日期
     """
     rs = bs.query_history_k_data_plus(
-        stock_code,
-        "date,close,volume",
+        stock_code, fields,
         start_date=start_date,
         end_date=end_date,
         frequency="d",
-        adjustflag="3",  # 前复权
+        adjustflag="3",
     )
     if rs.error_code != "0":
         raise RuntimeError(f"baostock 查询失败: {rs.error_msg}")
@@ -32,9 +33,9 @@ def fetch_stock_data(stock_code: str, start_date: str, end_date: str) -> pd.Data
         rows.append(rs.get_row_data())
     df = pd.DataFrame(rows, columns=rs.fields)
 
-    # 类型转换
-    df["close"] = pd.to_numeric(df["close"], errors="coerce")
-    df["volume"] = pd.to_numeric(df["volume"], errors="coerce")
+    for col in df.columns:
+        if col != "date":
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date").sort_index()
     df = df.dropna()
@@ -43,19 +44,10 @@ def fetch_stock_data(stock_code: str, start_date: str, end_date: str) -> pd.Data
 
 
 def fetch_all_stocks(
-    stock_codes: list[str], start_date: str, end_date: str, save_dir: str | None = None
+    stock_codes: list[str], start_date: str, end_date: str,
+    fields: str = "date,close,volume", save_dir: str | None = None,
 ) -> dict[str, pd.DataFrame]:
-    """批量获取多只股票数据。
-
-    Args:
-        stock_codes: 股票代码列表
-        start_date: 起始日期
-        end_date: 结束日期
-        save_dir: 可选，保存 CSV 的目录
-
-    Returns:
-        字典，key 为股票代码，value 为 DataFrame
-    """
+    """批量获取多只股票数据。"""
     lg = bs.login()
     if lg.error_code != "0":
         raise RuntimeError(f"baostock 登录失败: {lg.error_msg}")
@@ -63,7 +55,7 @@ def fetch_all_stocks(
     result = {}
     try:
         for code in stock_codes:
-            df = fetch_stock_data(code, start_date, end_date)
+            df = fetch_stock_data(code, start_date, end_date, fields)
             result[code] = df
             if save_dir:
                 Path(save_dir).mkdir(parents=True, exist_ok=True)
