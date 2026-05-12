@@ -2,7 +2,13 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+# 中文字体支持
+plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
 
 
 def plot_prediction_vs_actual(y_true, y_pred_dict, title="模型预测值 vs 真实值", save_path=None):
@@ -18,7 +24,8 @@ def plot_prediction_vs_actual(y_true, y_pred_dict, title="模型预测值 vs 真
     plt.tight_layout()
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.show()
+        print(f"  已保存: {save_path}")
+    plt.close(fig)
 
 
 def plot_backtest_curves(backtest_results, initial_capital=1_000_000,
@@ -36,7 +43,8 @@ def plot_backtest_curves(backtest_results, initial_capital=1_000_000,
     plt.tight_layout()
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.show()
+        print(f"  已保存: {save_path}")
+    plt.close(fig)
 
 
 def print_backtest_summary(backtest_results):

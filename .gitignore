@@ -28,6 +28,7 @@ data/**/*.csv
 # Model outputs
 outputs/**/*.pkl
 outputs/**/*.joblib
+outputs/**/*.png
 
 # OS
 .DS_Store
