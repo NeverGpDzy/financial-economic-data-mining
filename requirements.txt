@@ -1,0 +1,6 @@
+baostock
+pandas
+numpy
+matplotlib
+scikit-learn
+lightgbm
