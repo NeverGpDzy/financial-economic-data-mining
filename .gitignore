@@ -32,6 +32,7 @@ outputs/**/*.png
 outputs/**/*.json
 outputs/**/*.pptx
 outputs/**/*.jpg
+outputs/**/*.md
 
 # Credentials & secrets
 .env
