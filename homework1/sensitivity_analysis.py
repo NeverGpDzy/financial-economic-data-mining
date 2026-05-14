@@ -108,7 +108,7 @@ def run_single_experiment(
 
     # 4. 模型训练与评估
     print("\n[4/6] 模型训练与评估...")
-    train_and_evaluate(X_train_eval, y_train_eval, X_test_eval, y_test_eval)
+    eval_results = train_and_evaluate(X_train_eval, y_train_eval, X_test_eval, y_test_eval)
 
     # 用 train_year 全部数据训练最终模型
     final_models = get_models()
@@ -148,8 +148,12 @@ def run_single_experiment(
             "train_samples": len(X_train_final),
             "test_samples": len(X_test),
         },
+        "eval_metrics": {},
         "backtest_results": {}
     }
+
+    for name, result in eval_results.items():
+        summary["eval_metrics"][name] = result["metrics"]
 
     for name, bt in backtest_results.items():
         summary["backtest_results"][name] = {
