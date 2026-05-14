@@ -30,6 +30,8 @@ outputs/**/*.pkl
 outputs/**/*.joblib
 outputs/**/*.png
 outputs/**/*.json
+outputs/**/*.pptx
+outputs/**/*.jpg
 
 # Credentials & secrets
 .env

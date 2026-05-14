@@ -57,6 +57,7 @@ $$\text{price\_return}_t = \frac{\text{close}_t - \text{close}_{t-1}}{\text{clos
 $$\text{vol\_return}_t = \frac{\text{volume}_t - \text{volume}_{t-1}}{\text{volume}_{t-1}}$$
 
 ### 4.3 滚动窗口特征
+
 构造**过去 10 日**的滚动窗口特征：
 - 过去 10 天的价格收益率：price_return_1 ~ price_return_10
 - 过去 10 天的成交量收益率：vol_return_1 ~ vol_return_10
@@ -64,11 +65,13 @@ $$\text{vol\_return}_t = \frac{\text{volume}_t - \text{volume}_{t-1}}{\text{volu
 **共 20 个特征**。
 
 ### 4.4 预测目标（标签）
+
 $$\text{label}_t = \text{price\_return}_{t+1}$$
 
 即预测**次日价格收益率**。
 
 ### 4.5 样本数量
+
 - 构建特征后样本数：473 条（去掉前 10 天和最后 1 天的 NaN）
 - 2024 年特征样本数：231 条
 - 2025 年特征样本数：242 条
