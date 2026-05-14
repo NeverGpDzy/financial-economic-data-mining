@@ -25,8 +25,8 @@ import json
 
 def run_single_experiment(
     stock_codes: list[str],
-    start_date: str,
-    end_date: str,
+    train_year: int,
+    test_year: int,
     window: int,
     initial_capital: float = 1_000_000,
     commission: float = 0.0003,
@@ -36,10 +36,12 @@ def run_single_experiment(
 ) -> dict:
     """运行单次实验。
 
+    逻辑与 main.py 一致：用 train_year 全年数据训练最终模型，对 test_year 数据回测。
+
     Args:
         stock_codes: 股票代码列表
-        start_date: 数据起始日期
-        end_date: 数据结束日期
+        train_year: 训练年份
+        test_year: 回测年份
         window: 滑动窗口大小
         initial_capital: 初始资金
         commission: 手续费率
@@ -50,11 +52,14 @@ def run_single_experiment(
     Returns:
         实验结果字典
     """
+    start_date = f"{train_year}-01-01"
+    end_date = f"{test_year}-12-31"
+
     print(f"\n{'='*60}")
-    print(f"实验配置: 窗口={window}, 周期={start_date}~{end_date}")
+    print(f"实验配置: 窗口={window}, 训练={train_year}, 回测={test_year}")
     print(f"{'='*60}")
 
-    # 1. 数据获取
+    # 1. 数据获取（覆盖训练年+回测年）
     print("\n[1/6] 数据获取...")
     stock_data = fetch_all_stocks(stock_codes, start_date, end_date, save_dir=data_dir)
 
@@ -67,35 +72,49 @@ def run_single_experiment(
     df_feat, feature_cols = build_features(df, window=window)
     print(f"特征数: {len(feature_cols)}, 样本数: {len(df_feat)}")
 
-    # 3. 数据划分 - 训练集和回测集各占一半
+    # 3. 数据划分（与 main.py 一致）
     print("\n[3/6] 数据划分...")
-    total_len = len(df_feat)
-    split_idx = total_len // 2
 
-    df_train = df_feat.iloc[:split_idx]
-    df_test = df_feat.iloc[split_idx:]
+    # 训练集：train_year 全年数据，其中前80%用于评估，后20%用于测试评估
+    train_end = f"{train_year + 1}-01-01"
+    mask_train_year = df_feat.index < train_end
+    df_train_year = df_feat[mask_train_year]
 
-    X_train = df_train[feature_cols]
-    y_train = df_train["label"]
+    split_idx = int(len(df_train_year) * 0.8)
+    X_train_eval = df_train_year.iloc[:split_idx][feature_cols]
+    y_train_eval = df_train_year.iloc[:split_idx]["label"]
+    X_test_eval = df_train_year.iloc[split_idx:][feature_cols]
+    y_test_eval = df_train_year.iloc[split_idx:]["label"]
+
+    # 最终模型：用 train_year 全部数据训练
+    X_train_final = df_train_year[feature_cols]
+    y_train_final = df_train_year["label"]
+
+    # 回测集：test_year 全年数据
+    test_start_date = f"{test_year}-01-01"
+    mask_test = df_feat.index >= test_start_date
+    df_test = df_feat[mask_test]
     X_test = df_test[feature_cols]
     y_test = df_test["label"]
 
-    train_start = df_train.index[0].strftime("%Y-%m-%d")
-    train_end = df_train.index[-1].strftime("%Y-%m-%d")
+    train_eval_start = df_train_year.index[0].strftime("%Y-%m-%d")
+    train_eval_end = df_train_year.index[-1].strftime("%Y-%m-%d")
     test_start = df_test.index[0].strftime("%Y-%m-%d")
     test_end = df_test.index[-1].strftime("%Y-%m-%d")
 
-    print(f"训练集: {len(X_train)} 条 ({train_start} ~ {train_end})")
-    print(f"回测集: {len(X_test)} 条 ({test_start} ~ {test_end})")
+    print(f"训练年({train_year}): {len(X_train_final)} 条 ({train_eval_start} ~ {train_eval_end})")
+    print(f"  评估拆分: 训练{len(X_train_eval)}条 / 测试{len(X_test_eval)}条")
+    print(f"回测年({test_year}): {len(X_test)} 条 ({test_start} ~ {test_end})")
 
     # 4. 模型训练与评估
     print("\n[4/6] 模型训练与评估...")
-    results_train = train_and_evaluate(X_train, y_train, X_test, y_test)
+    train_and_evaluate(X_train_eval, y_train_eval, X_test_eval, y_test_eval)
 
-    # 训练最终模型
+    # 用 train_year 全部数据训练最终模型
     final_models = get_models()
     for name, model in final_models.items():
-        model.fit(X_train, y_train)
+        model.fit(X_train_final, y_train_final)
+    print("最终模型训练完成（使用训练年全部数据）。")
 
     # 5. 量化回测
     print("\n[5/6] 量化回测...")
@@ -122,11 +141,11 @@ def run_single_experiment(
     summary = {
         "config": {
             "window": window,
-            "start_date": start_date,
-            "end_date": end_date,
-            "train_period": f"{train_start}~{train_end}",
+            "train_year": train_year,
+            "test_year": test_year,
+            "train_period": f"{train_eval_start}~{train_eval_end}",
             "test_period": f"{test_start}~{test_end}",
-            "train_samples": len(X_train),
+            "train_samples": len(X_train_final),
             "test_samples": len(X_test),
         },
         "backtest_results": {}
@@ -173,7 +192,7 @@ def save_experiment_results(
     # 保存预测值vs真实值图
     plot_prediction_vs_actual(
         y_test.values, pred_dict,
-        title=f"窗口={summary['config']['window']} 周期={summary['config']['start_date']}~{summary['config']['end_date']}\n模型预测值 vs 真实值",
+        title=f"窗口={summary['config']['window']} 训练={summary['config']['train_year']} 回测={summary['config']['test_year']}\n模型预测值 vs 真实值",
         save_path=str(output_dir / "prediction_vs_actual.png"),
     )
 
@@ -181,7 +200,7 @@ def save_experiment_results(
     plot_backtest_curves(
         backtest_results,
         initial_capital=initial_capital,
-        title=f"窗口={summary['config']['window']} 周期={summary['config']['start_date']}~{summary['config']['end_date']}\n回测累计收益曲线",
+        title=f"窗口={summary['config']['window']} 训练={summary['config']['train_year']} 回测={summary['config']['test_year']}\n回测累计收益曲线",
         save_path=str(output_dir / "backtest_curves.png"),
     )
 
@@ -192,6 +211,8 @@ def save_experiment_results(
 def run_window_sensitivity(stock_codes: list[str], data_dir: str, output_base: Path):
     """运行滑动窗口敏感性分析。
 
+    逻辑与原始 main.py 一致：2024年训练，2025年回测，仅改变窗口大小。
+
     Args:
         stock_codes: 股票代码列表
         data_dir: 数据缓存目录
@@ -201,11 +222,11 @@ def run_window_sensitivity(stock_codes: list[str], data_dir: str, output_base: P
     print("敏感性分析1: 滑动窗口大小 (10天 vs 20天)")
     print("=" * 70)
 
-    # 基准实验: 窗口=10
+    # 基准实验: 窗口=10（与原始 main.py 一致）
     summary_10, bt_10, pred_10, y_test_10, df_test_10 = run_single_experiment(
         stock_codes=stock_codes,
-        start_date="2024-01-01",
-        end_date="2025-12-31",
+        train_year=2024,
+        test_year=2025,
         window=10,
         data_dir=data_dir,
     )
@@ -217,8 +238,8 @@ def run_window_sensitivity(stock_codes: list[str], data_dir: str, output_base: P
     # 对比实验: 窗口=20
     summary_20, bt_20, pred_20, y_test_20, df_test_20 = run_single_experiment(
         stock_codes=stock_codes,
-        start_date="2024-01-01",
-        end_date="2025-12-31",
+        train_year=2024,
+        test_year=2025,
         window=20,
         data_dir=data_dir,
     )
@@ -241,20 +262,22 @@ def run_window_sensitivity(stock_codes: list[str], data_dir: str, output_base: P
 def run_period_sensitivity(stock_codes: list[str], data_dir: str, output_base: Path):
     """运行统计周期敏感性分析。
 
+    逻辑与原始 main.py 一致：用前一年全年数据训练，对后一年数据回测。
+
     Args:
         stock_codes: 股票代码列表
         data_dir: 数据缓存目录
         output_base: 输出基础目录
     """
     print("\n" + "=" * 70)
-    print("敏感性分析2: 统计周期 (2023-2024 vs 2022-2023)")
+    print("敏感性分析2: 统计周期 (2023训练-2024回测 vs 2022训练-2023回测)")
     print("=" * 70)
 
-    # 基准实验: 2023训练-2024回测
+    # 实验1: 2023训练-2024回测
     summary_23_24, bt_23_24, pred_23_24, y_test_23_24, df_test_23_24 = run_single_experiment(
         stock_codes=stock_codes,
-        start_date="2023-01-01",
-        end_date="2024-12-31",
+        train_year=2023,
+        test_year=2024,
         window=10,
         data_dir=data_dir,
     )
@@ -263,11 +286,11 @@ def run_period_sensitivity(stock_codes: list[str], data_dir: str, output_base: P
         output_dir=output_base / "period_2023_2024",
     )
 
-    # 对比实验: 2022训练-2023回测
+    # 实验2: 2022训练-2023回测
     summary_22_23, bt_22_23, pred_22_23, y_test_22_23, df_test_22_23 = run_single_experiment(
         stock_codes=stock_codes,
-        start_date="2022-01-01",
-        end_date="2023-12-31",
+        train_year=2022,
+        test_year=2023,
         window=10,
         data_dir=data_dir,
     )
