@@ -4,3 +4,6 @@ numpy
 matplotlib
 scikit-learn
 lightgbm
+statsmodels
+python-pptx
+scipy

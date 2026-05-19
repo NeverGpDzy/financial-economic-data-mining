@@ -1,0 +1,78 @@
+{
+  "risk_free_daily": 0.00011999999999999999,
+  "significance_level": 0.1,
+  "selected_stock": "泸州老窖",
+  "selected_code": "sz.000568",
+  "selected_alpha_daily": 0.0017560890331052464,
+  "selected_alpha_annualized": 0.4390222582763116,
+  "selected_alpha_pvalue": 0.03373017476561139,
+  "selected_beta": 1.5704128531442239,
+  "selected_r_squared": 0.42970109783638166,
+  "backtest_metrics": {
+    "stock_total_return": -0.4334841628959276,
+    "market_total_return": 0.010779286862754311,
+    "excess_total_return": -0.4442634497586819,
+    "stock_max_drawdown": -0.6161933998465081,
+    "market_max_drawdown": -0.2480391398468823,
+    "stock_calmar": -0.7034871892556902,
+    "market_calmar": 0.043458007753971815,
+    "stock_final_value": 566515.8371040723,
+    "market_final_value": 1010779.2868627543
+  },
+  "extended_backtest_results": [
+    {
+      "period": "原回测期：2023-2024",
+      "start_date": "2023-01-04",
+      "end_date": "2024-12-31",
+      "trading_days": 483,
+      "stock_total_return": -0.4334841628959276,
+      "market_total_return": 0.010779286862754311,
+      "excess_total_return": -0.4442634497586819,
+      "stock_max_drawdown": -0.6161933998465081,
+      "market_max_drawdown": -0.2480391398468823,
+      "stock_calmar": -0.7034871892556902,
+      "market_calmar": 0.043458007753971815,
+      "stock_final_value": 566515.8371040723,
+      "market_final_value": 1010779.2868627543
+    },
+    {
+      "period": "延长至2025年底",
+      "start_date": "2023-01-04",
+      "end_date": "2025-12-31",
+      "trading_days": 726,
+      "stock_total_return": -0.47411764705882353,
+      "market_total_return": 0.18931459058645972,
+      "excess_total_return": -0.6634322376452833,
+      "stock_max_drawdown": -0.6161933998465081,
+      "market_max_drawdown": -0.2480391398468823,
+      "stock_calmar": -0.7694299341358164,
+      "market_calmar": 0.7632448278256649,
+      "stock_final_value": 525882.3529411765,
+      "market_final_value": 1189314.5905864597
+    },
+    {
+      "period": "延长至最新可得数据",
+      "start_date": "2023-01-04",
+      "end_date": "2026-05-18",
+      "trading_days": 812,
+      "stock_total_return": -0.59289592760181,
+      "market_total_return": 0.24161023278067661,
+      "excess_total_return": -0.8345061603824866,
+      "stock_max_drawdown": -0.654758250191865,
+      "market_max_drawdown": -0.2480391398468823,
+      "stock_calmar": -0.9055188345134599,
+      "market_calmar": 0.974081078211389,
+      "stock_final_value": 407104.07239819004,
+      "market_final_value": 1241610.2327806766
+    }
+  ],
+  "files": {
+    "capm_results": "outputs\\homework2\\capm_results.csv",
+    "backtest_curve": "outputs\\homework2\\backtest_curve.csv",
+    "backtest_plot": "outputs\\homework2\\backtest_curve.png",
+    "extended_backtest_results": "outputs\\homework2\\extended_backtest_results.csv",
+    "extended_backtest_curve": "outputs\\homework2\\extended_backtest_curve.csv",
+    "extended_backtest_plot": "outputs\\homework2\\extended_backtest_curve.png",
+    "extended_horizon_plot": "outputs\\homework2\\extended_horizon_comparison.png"
+  }
+}
