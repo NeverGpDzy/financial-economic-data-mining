@@ -42,6 +42,10 @@ credentials.json
 # Logs
 *.log
 
+# Presentation files
+*.ppt
+*.pptx
+
 # OS
 .DS_Store
 Thumbs.db
