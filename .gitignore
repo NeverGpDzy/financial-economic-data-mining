@@ -27,6 +27,7 @@ data/**/*.pkl
 !data/**/.gitkeep
 
 # Model outputs
+outputs/**/*.csv
 outputs/**/*.pkl
 outputs/**/*.joblib
 outputs/**/*.png

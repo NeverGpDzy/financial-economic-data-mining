@@ -84,7 +84,6 @@ def run_backtest(
     # --- Subsequent months ---
     for mi in range(1, len(months)):
         month = months[mi]
-        prev_month = months[mi - 1]
 
         # Step 1: Mark-to-market holdings at this month's prices
         port_value = cash + _holdings_value(holdings, price_map[month])
