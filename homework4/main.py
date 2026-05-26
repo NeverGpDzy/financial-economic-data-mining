@@ -64,7 +64,7 @@ def main(refresh: bool = False) -> None:
     print(f"因子池: {', '.join(FACTORS)}")
     print(f"  SMB  = 规模因子 (总市值)")
     print(f"  PE_inv = 价值因子 (1/PE_TTM)")
-    print(f"  Quality = ROE × 股利分红率 × 净利润增速")
+    print(f"  Quality = 销售净利率 × (经营现金流/净利润) × 净利润增速")
 
     # ================================================================
     # Module 1: Data fetching & preprocessing

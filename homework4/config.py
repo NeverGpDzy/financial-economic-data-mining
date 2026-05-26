@@ -27,7 +27,7 @@ MAX_SINGLE_WEIGHT = 0.40
 
 # --- Factor list ---
 FACTORS = ["SMB", "PE_inv", "Quality"]
-FACTOR_NAMES = {"SMB": "规模因子", "PE_inv": "价值因子(PE倒数)", "Quality": "质量因子"}
+FACTOR_NAMES = {"SMB": "规模因子", "PE_inv": "价值因子(PE倒数)", "Quality": "质量因子(npMargin×CFOToNP×YOYNI)"}
 
 # --- IC / IR thresholds ---
 IC_MEAN_THRESHOLD = 0.02  # IC > 0.02: predictive

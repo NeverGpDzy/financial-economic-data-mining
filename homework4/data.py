@@ -45,7 +45,7 @@ def _fetch_daily(code: str, start: str, end: str, fields: str) -> pd.DataFrame:
 
 
 def _fetch_financials(code: str, years: list[int]) -> dict[int, dict]:
-    """Fetch annual financial data (Q4 profit + growth + dividend) for a stock."""
+    """Fetch annual financial data (Q4 profit + growth + cash flow) for a stock."""
     result = {}
     for year in years:
         fin: dict = {"year": year}
@@ -68,16 +68,14 @@ def _fetch_financials(code: str, years: list[int]) -> dict[int, dict]:
                 for i, f in enumerate(fields):
                     fin[f"g_{f}"] = row[i]
 
-        # Dividend data
-        rs = bs.query_dividend_data(code=code, year=year, yearType="report")
-        div_records = []
+        # Cash flow data
+        rs = bs.query_cash_flow_data(code=code, year=year, quarter=4)
         if rs.error_code == "0":
             while rs.next():
                 row = rs.get_row_data()
                 fields = rs.fields
-                d = dict(zip(fields, row))
-                div_records.append(d)
-        fin["dividend_records"] = div_records
+                for i, f in enumerate(fields):
+                    fin[f"cf_{f}"] = row[i]
 
         result[year] = fin
     return result
@@ -85,6 +83,9 @@ def _fetch_financials(code: str, years: list[int]) -> dict[int, dict]:
 
 def _compute_factors(df: pd.DataFrame, financials: dict[int, dict]) -> pd.DataFrame:
     """Merge financial data and compute factors: SMB, PE_inv, Quality.
+
+    Quality = 销售净利率 × (经营性现金净流量/净利润) × 净利润同比增长率
+            = npMargin × CFOToNP × YOYNI
 
     Financial data is lagged by one year to avoid look-ahead bias:
     year N annual reports are published ~March of year N+1.
@@ -97,34 +98,22 @@ def _compute_factors(df: pd.DataFrame, financials: dict[int, dict]) -> pd.DataFr
         fin = financials[yr]
         yd: dict = {"year": yr}
 
-        np_val = pd.to_numeric(fin.get("netProfit", np.nan), errors="coerce")
         shares_val = pd.to_numeric(fin.get("totalShare", np.nan), errors="coerce")
-        yd["netProfit"] = np_val if not pd.isna(np_val) else np.nan
         yd["totalShare"] = shares_val if not pd.isna(shares_val) and shares_val > 0 else np.nan
 
-        roe_val = pd.to_numeric(fin.get("roeAvg", np.nan), errors="coerce")
-        yd["roe"] = roe_val if not pd.isna(roe_val) else np.nan
+        np_margin = pd.to_numeric(fin.get("npMargin", np.nan), errors="coerce")
+        yd["npMargin"] = np_margin if not pd.isna(np_margin) else np.nan
+
+        cfo_to_np = pd.to_numeric(fin.get("cf_CFOToNP", np.nan), errors="coerce")
+        yd["CFOToNP"] = cfo_to_np if not pd.isna(cfo_to_np) else np.nan
 
         g_val = pd.to_numeric(fin.get("g_YOYNI", np.nan), errors="coerce")
         yd["profit_growth"] = g_val if not pd.isna(g_val) else np.nan
 
-        div_records = fin.get("dividend_records", [])
-        if div_records and not pd.isna(np_val) and np_val != 0 and not pd.isna(shares_val):
-            total_div = 0.0
-            for d in div_records:
-                cash_div = pd.to_numeric(d.get("dividCashPsBeforeTax", 0), errors="coerce")
-                if pd.isna(cash_div):
-                    cash_div = 0.0
-                total_div += cash_div
-            yd["div_ratio"] = total_div * shares_val / np_val
-        else:
-            yd["div_ratio"] = np.nan
-
         yearly_data[yr] = yd
 
     # Second pass: assign lagged data to months
-    sorted_years = sorted(yearly_data.keys())
-    last = {k: np.nan for k in ["netProfit", "totalShare", "roe", "div_ratio", "profit_growth"]}
+    last = {k: np.nan for k in ["totalShare", "npMargin", "CFOToNP", "profit_growth"]}
 
     for yr in out["date"].dt.year.unique():
         # Use financial data from year yr-1 (latest available at yr's start)
@@ -138,12 +127,12 @@ def _compute_factors(df: pd.DataFrame, financials: dict[int, dict]) -> pd.DataFr
         mask = out["date"].dt.year == yr
         if mask.any():
             out.loc[mask, "total_shares"] = last["totalShare"]
-            out.loc[mask, "roe"] = last["roe"]
-            out.loc[mask, "div_ratio"] = last["div_ratio"]
+            out.loc[mask, "np_margin"] = last["npMargin"]
+            out.loc[mask, "cfo_to_np"] = last["CFOToNP"]
             out.loc[mask, "profit_growth"] = last["profit_growth"]
 
-    # Forward fill remaining NaN financial data
-    for col in ["total_shares", "roe", "div_ratio", "profit_growth"]:
+    # Forward fill remaining NaN
+    for col in ["total_shares", "np_margin", "cfo_to_np", "profit_growth"]:
         if col in out.columns:
             out[col] = out[col].ffill().bfill()
 
@@ -158,10 +147,10 @@ def _compute_factors(df: pd.DataFrame, financials: dict[int, dict]) -> pd.DataFr
     out["PE_inv"] = 1.0 / out["pe_ttm"]
     out.loc[out["pe_ttm"] < 0, "PE_inv"] = 0.0
 
-    # Quality = ROE × dividend ratio × profit growth
+    # Quality = npMargin × CFOToNP × profit_growth
     out["Quality"] = (
-        out.get("roe", np.nan) *
-        out.get("div_ratio", np.nan) *
+        out.get("np_margin", np.nan) *
+        out.get("cfo_to_np", np.nan) *
         out.get("profit_growth", np.nan)
     )
     out["Quality"] = out["Quality"].clip(-10, 10)
@@ -264,7 +253,7 @@ def get_data(refresh: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.Data
         all_df["next_excess_return"] = all_df.groupby("code")["excess_return"].transform(lambda x: x.shift(-1))
 
         # 6. Forward fill missing financial data
-        fill_cols = ["market_cap", "PE_inv", "Quality", "SMB", "roe", "div_ratio", "profit_growth"]
+        fill_cols = ["market_cap", "PE_inv", "Quality", "SMB", "np_margin", "cfo_to_np", "profit_growth"]
         for col in fill_cols:
             if col in all_df.columns:
                 all_df[col] = all_df.groupby("code")[col].transform(
