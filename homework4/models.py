@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from scipy import stats
 
 
 # ======================== Module 2: CAPM Screening + Single-Factor Test ========================
@@ -47,18 +48,20 @@ def capm_screening(train_df: pd.DataFrame, mkt_df: pd.DataFrame) -> pd.DataFrame
 
 
 def single_factor_test(train_df: pd.DataFrame, factors: list[str]) -> dict:
-    """Step 2-3: Single factor cross-sectional regression.
+    """Step 2-3: Single factor cross-sectional regression (Fama-MacBeth).
 
-    Each month: next_excess_return = α + β×Factor + ε
-    Average p-value across months determines factor validity.
+    Factors are Z-Score standardized within each month's cross-section
+    before regression to ensure comparable betas across factors.
 
-    Returns dict with factor results and list of valid factors.
+    Each month: next_excess_return = α + β×Factor_std + ε
+    Significance via Fama-MacBeth t-test:
+      t = mean(beta) / (std(beta) / sqrt(n_months))
     """
     results = {}
     valid_factors = []
 
     for factor in factors:
-        beta_list, p_list, t_list = [], [], []
+        beta_list = []
         months = sorted(train_df["date"].unique())
 
         for month in months:
@@ -66,35 +69,42 @@ def single_factor_test(train_df: pd.DataFrame, factors: list[str]) -> dict:
             if len(sub) < 10:
                 continue
 
-            X = sm.add_constant(sub[factor].values)
+            # Z-Score standardize factor within this month's cross-section
+            f_vals = sub[factor].values
+            f_mean, f_std = f_vals.mean(), f_vals.std(ddof=0)
+            f_std_safe = f_std if f_std > 0 else 1.0
+            f_z = (f_vals - f_mean) / f_std_safe
+
+            X = sm.add_constant(f_z)
             y = sub["next_excess_return"].values
             try:
                 model = sm.OLS(y, X).fit()
                 beta_list.append(model.params[1])
-                p_list.append(model.pvalues[1])
-                t_list.append(model.tvalues[1])
             except Exception:
                 continue
 
-        if not beta_list:
+        if len(beta_list) < 3:
             results[factor] = {
                 "beta_mean": np.nan, "beta_std": np.nan,
-                "p_mean": np.nan, "t_mean": np.nan,
-                "n_months": 0, "valid": False,
+                "n_months": len(beta_list), "fm_t": np.nan, "fm_p": np.nan,
+                "valid": False,
             }
             continue
 
-        avg_p = np.mean(p_list)
-        is_valid = avg_p < 0.05
+        mean_beta = float(np.mean(beta_list))
+        std_beta = float(np.std(beta_list, ddof=1))
+        n = len(beta_list)
+        fm_t = mean_beta / (std_beta / np.sqrt(n)) if std_beta > 0 else 0.0
+        fm_p = float(2 * stats.t.sf(abs(fm_t), df=n - 1))
+        is_valid = fm_p < 0.05
 
         results[factor] = {
-            "beta_mean": float(np.mean(beta_list)),
-            "beta_std": float(np.std(beta_list)),
-            "p_mean": float(avg_p),
-            "t_mean": float(np.mean(t_list)),
-            "n_months": len(beta_list),
+            "beta_mean": mean_beta,
+            "beta_std": std_beta,
+            "n_months": n,
+            "fm_t": fm_t,
+            "fm_p": fm_p,
             "beta_series": beta_list,
-            "p_series": p_list,
             "valid": is_valid,
         }
 

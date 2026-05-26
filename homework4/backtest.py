@@ -9,16 +9,17 @@ import pandas as pd
 def standardize_test_factors(
     test_df: pd.DataFrame, train_df: pd.DataFrame, valid_factors: list[str],
 ) -> pd.DataFrame:
-    """Standardize test-set factors using training-set mean and std."""
+    """Standardize test-set factors: cross-sectional Z-Score per month.
+
+    Uses monthly cross-sectional mean/std, consistent with training
+    standardization approach (factor_standardize in models.py).
+    """
     out = test_df.copy()
     for f in valid_factors:
-        train_mean = train_df[f].mean()
-        train_std = train_df[f].std()
         std_name = f"{f}_std"
-        if train_std > 0:
-            out[std_name] = (out[f] - train_mean) / train_std
-        else:
-            out[std_name] = 0.0
+        out[std_name] = out.groupby("date")[f].transform(
+            lambda x: (x - x.mean()) / x.std() if x.std() > 0 else 0.0
+        )
         out[std_name] = out[std_name].fillna(0.0)
     return out
 
@@ -48,19 +49,22 @@ def run_backtest(
 
     Key principle: At end of month t, use Factors(t) to predict Return(t+1).
     Select stocks at t's close → hold through t+1 → realize P&L at t+1 close.
+
+    Shares are tracked explicitly to avoid fee double-counting.
     """
     months = sorted(test_df["date"].unique())
     if len(months) < 2:
         raise ValueError("Need at least 2 months for backtest.")
 
-    # Pre-build lookup: code -> close price per month
+    # Pre-build price lookup
     price_map = {}
     for month in months:
         sub = test_df[test_df["date"] == month]
         price_map[month] = dict(zip(sub["code"], sub["close"]))
 
     cash = init_capital
-    holdings: dict[str, float] = {}  # {code: allocated_capital}
+    # holdings: {code: {"shares": int}}  — shares held
+    holdings: dict[str, dict] = {}
     nav_history = []
     trade_records = []
 
@@ -73,55 +77,39 @@ def run_backtest(
     if not selected0:
         raise RuntimeError("First month has no tradeable stocks.")
 
-    cash, holdings = _rebalance(selected0, price_map[month0], cash, fee, max_single_weight)
-
-    nav_history.append({
-        "date": month0, "nav": cash + sum(holdings.values()),
-        "selected": selected0,
-    })
+    cash, holdings = _buy_stocks(selected0, price_map[month0], cash, fee, max_single_weight)
+    port_value = cash + _holdings_value(holdings, price_map[month0])
+    nav_history.append({"date": month0, "nav": port_value, "selected": selected0})
 
     # --- Subsequent months ---
     for mi in range(1, len(months)):
         month = months[mi]
-        sub = test_df[test_df["date"] == month]
+        prev_month = months[mi - 1]
 
-        # Step 1: Realize returns on existing holdings from month-1 to month
-        portfolio_value = cash
-        for code, allocated in list(holdings.items()):
-            if code in price_map[month]:
-                # Compute return: we bought at month-1 close, now at month close
-                prev_close = price_map[months[mi - 1]].get(code, np.nan)
-                curr_close = price_map[month].get(code, np.nan)
-                if not pd.isna(prev_close) and not pd.isna(curr_close) and prev_close > 0:
-                    stock_ret = (curr_close / prev_close) - 1
-                    holdings[code] = allocated * (1 + stock_ret)
-                    portfolio_value += holdings[code]
-                else:
-                    portfolio_value += allocated
-            else:
-                portfolio_value += allocated
+        # Step 1: Mark-to-market holdings at this month's prices
+        port_value = cash + _holdings_value(holdings, price_map[month])
 
-        cash = 0.0  # All capital is in holdings
-
-        # Step 2: Record current portfolio value (before rebalancing this month)
-        nav = portfolio_value
+        # Step 2: Compute month return and record
+        nav = port_value
         month_return = (nav / nav_history[-1]["nav"] - 1) if nav_history[-1]["nav"] > 0 else 0.0
 
-        # Step 3: Rebalance — sell old, compute new scores, buy new (for next month)
-        # Sell all old holdings at this month's close
-        sell_cash = 0.0
+        # Step 3: Sell all holdings at this month's close price (with fee)
+        sell_proceeds = 0.0
         for code in list(holdings.keys()):
-            sell_value = holdings[code] * (1 - fee)
-            sell_cash += sell_value
+            price = price_map[month].get(code, np.nan)
+            if not pd.isna(price) and price > 0:
+                shares = holdings[code]["shares"]
+                sell_proceeds += shares * price * (1 - fee)
             del holdings[code]
-        cash = sell_cash
+        cash = sell_proceeds
 
-        # Score and select for next month
+        # Step 4: Score and select for next month
+        sub = test_df[test_df["date"] == month]
         ranked = select_top_stocks(sub, score_func, top_n=top_n)
         selected = _pick_tradeable(ranked, top_n)
 
         if selected:
-            cash, holdings = _rebalance(selected, price_map[month], cash, fee, max_single_weight)
+            cash, holdings = _buy_stocks(selected, price_map[month], cash, fee, max_single_weight)
             trade_records.append({
                 "month": str(month),
                 "holdings": ", ".join(selected),
@@ -129,7 +117,6 @@ def run_backtest(
                 "month_return": float(month_return),
             })
         else:
-            # No tradeable stocks — stay in cash
             cash = nav
             holdings = {}
             trade_records.append({
@@ -139,9 +126,10 @@ def run_backtest(
                 "month_return": float(month_return),
             })
 
+        port_value = cash + _holdings_value(holdings, price_map[month])
         nav_history.append({
             "date": month,
-            "nav": cash + sum(holdings.values()),
+            "nav": port_value,
             "selected": selected if selected else [],
         })
 
@@ -150,10 +138,9 @@ def run_backtest(
     result["date"] = pd.to_datetime(result["date"].astype(str))
     result = result.set_index("date").sort_index()
 
-    # Market comparison — reindex to result dates
+    # Market comparison
     mkt_close = mkt_df["close"]
-    mkt_aligned = mkt_close.reindex(result.index, method="ffill")
-    mkt_aligned = mkt_aligned.ffill().bfill()
+    mkt_aligned = mkt_close.reindex(result.index, method="ffill").ffill().bfill()
     if not mkt_aligned.empty and mkt_aligned.iloc[0] > 0:
         result["market_nav"] = (mkt_aligned / mkt_aligned.iloc[0]) * init_capital
     else:
@@ -203,24 +190,27 @@ def run_backtest(
 
 
 def _pick_tradeable(ranked: pd.DataFrame, top_n: int) -> list[str]:
-    """Pick top-N stocks from ranked DataFrame, skipping untradeable ones."""
+    """Pick top-N stocks from ranked DataFrame."""
     selected = []
     for _, row in ranked.iterrows():
-        code = row["code"]
         if len(selected) >= top_n:
             break
-        selected.append(code)
+        selected.append(row["code"])
     return selected
 
 
-def _rebalance(
+def _buy_stocks(
     selected: list[str],
     prices: dict[str, float],
     cash: float,
     fee: float,
     max_single_weight: float,
-) -> tuple[float, dict[str, float]]:
-    """Buy selected stocks at given prices. Returns (remaining_cash, holdings)."""
+) -> tuple[float, dict[str, dict]]:
+    """Buy selected stocks with explicit share tracking.
+
+    Returns (remaining_cash, holdings_dict).
+    holdings_dict: {code: {"shares": int}}
+    """
     holdings = {}
     n = len(selected)
     weight_per_stock = min(1.0 / n, max_single_weight)
@@ -232,8 +222,20 @@ def _rebalance(
             continue
 
         alloc = total_capital * weight_per_stock
-        buy_cost = alloc * fee
-        holdings[code] = alloc - buy_cost
-        cash -= alloc
+        shares = int(alloc / (price * (1 + fee))) if price > 0 else 0
+        if shares > 0:
+            cost = shares * price * (1 + fee)
+            holdings[code] = {"shares": shares}
+            cash -= cost
 
     return cash, holdings
+
+
+def _holdings_value(holdings: dict[str, dict], prices: dict[str, float]) -> float:
+    """Compute total market value of holdings at given prices."""
+    total = 0.0
+    for code, pos in holdings.items():
+        price = prices.get(code, np.nan)
+        if not pd.isna(price) and price > 0:
+            total += pos["shares"] * price
+    return total

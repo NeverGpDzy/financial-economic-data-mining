@@ -84,58 +84,68 @@ def _fetch_financials(code: str, years: list[int]) -> dict[int, dict]:
 
 
 def _compute_factors(df: pd.DataFrame, financials: dict[int, dict]) -> pd.DataFrame:
-    """Merge financial data and compute factors: SMB, PE_inv, Quality."""
+    """Merge financial data and compute factors: SMB, PE_inv, Quality.
+
+    Financial data is lagged by one year to avoid look-ahead bias:
+    year N annual reports are published ~March of year N+1.
+    """
     out = df.copy()
 
-    last_np, last_shares, last_roe, last_div_ratio, last_growth = np.nan, np.nan, np.nan, np.nan, np.nan
-
+    # First pass: extract raw financial data per year
+    yearly_data = {}
     for yr in sorted(financials.keys()):
         fin = financials[yr]
-        # Net profit & total shares (from profit data)
+        yd: dict = {"year": yr}
+
         np_val = pd.to_numeric(fin.get("netProfit", np.nan), errors="coerce")
         shares_val = pd.to_numeric(fin.get("totalShare", np.nan), errors="coerce")
-        if not pd.isna(np_val):
-            last_np = np_val
-        if not pd.isna(shares_val) and shares_val > 0:
-            last_shares = shares_val
+        yd["netProfit"] = np_val if not pd.isna(np_val) else np.nan
+        yd["totalShare"] = shares_val if not pd.isna(shares_val) and shares_val > 0 else np.nan
 
-        # ROE (already in decimal, e.g. 0.264 = 26.4%)
         roe_val = pd.to_numeric(fin.get("roeAvg", np.nan), errors="coerce")
-        if not pd.isna(roe_val):
-            last_roe = roe_val
+        yd["roe"] = roe_val if not pd.isna(roe_val) else np.nan
 
-        # Dividend ratio = total dividend / net profit
+        g_val = pd.to_numeric(fin.get("g_YOYNI", np.nan), errors="coerce")
+        yd["profit_growth"] = g_val if not pd.isna(g_val) else np.nan
+
         div_records = fin.get("dividend_records", [])
-        if div_records and not pd.isna(last_np) and last_np != 0 and not pd.isna(last_shares):
+        if div_records and not pd.isna(np_val) and np_val != 0 and not pd.isna(shares_val):
             total_div = 0.0
             for d in div_records:
                 cash_div = pd.to_numeric(d.get("dividCashPsBeforeTax", 0), errors="coerce")
                 if pd.isna(cash_div):
                     cash_div = 0.0
                 total_div += cash_div
-            last_div_ratio = total_div * last_shares / last_np
+            yd["div_ratio"] = total_div * shares_val / np_val
+        else:
+            yd["div_ratio"] = np.nan
 
-        # Net profit YoY growth
-        g_val = pd.to_numeric(fin.get("g_YOYNI", np.nan), errors="coerce")
-        if not pd.isna(g_val):
-            last_growth = g_val / 100.0
+        yearly_data[yr] = yd
 
-        # Assign to months in this year
+    # Second pass: assign lagged data to months
+    sorted_years = sorted(yearly_data.keys())
+    last = {k: np.nan for k in ["netProfit", "totalShare", "roe", "div_ratio", "profit_growth"]}
+
+    for yr in out["date"].dt.year.unique():
+        # Use financial data from year yr-1 (latest available at yr's start)
+        data_yr = yr - 1
+        if data_yr in yearly_data:
+            yd = yearly_data[data_yr]
+            for k in last:
+                if not pd.isna(yd.get(k, np.nan)):
+                    last[k] = yd[k]
+
         mask = out["date"].dt.year == yr
         if mask.any():
-            if not pd.isna(last_shares):
-                out.loc[mask, "total_shares"] = last_shares
-            if not pd.isna(last_roe):
-                out.loc[mask, "roe"] = last_roe
-            if not pd.isna(last_div_ratio):
-                out.loc[mask, "div_ratio"] = last_div_ratio
-            if not pd.isna(last_growth):
-                out.loc[mask, "profit_growth"] = last_growth
+            out.loc[mask, "total_shares"] = last["totalShare"]
+            out.loc[mask, "roe"] = last["roe"]
+            out.loc[mask, "div_ratio"] = last["div_ratio"]
+            out.loc[mask, "profit_growth"] = last["profit_growth"]
 
-    # Forward fill financial data
+    # Forward fill remaining NaN financial data
     for col in ["total_shares", "roe", "div_ratio", "profit_growth"]:
         if col in out.columns:
-            out[col] = out[col].ffill()
+            out[col] = out[col].ffill().bfill()
 
     # Market cap = total_shares × close price (yuan)
     if "total_shares" in out.columns and "close" in out.columns:
@@ -210,6 +220,8 @@ def get_data(refresh: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.Data
             raise RuntimeError("无法获取上证指数数据")
         mkt_raw["date"] = pd.to_datetime(mkt_raw["date"])
         mkt_raw["close"] = pd.to_numeric(mkt_raw["close"], errors="coerce")
+        # Normalize to calendar month-end for alignment with stock daily-resampled data
+        mkt_raw["date"] = mkt_raw["date"] + pd.offsets.MonthEnd(0)
         mkt_raw = mkt_raw.set_index("date").sort_index()
         mkt_raw["mkt_return"] = mkt_raw["close"].pct_change()
         mkt_raw["mkt_excess"] = mkt_raw["mkt_return"] - 0.0015

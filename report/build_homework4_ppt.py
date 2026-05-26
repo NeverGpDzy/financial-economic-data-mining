@@ -252,31 +252,31 @@ def build_ppt():
 
     add_text(slide, "单因子横截面回归: Return(t+1) = α + β×Factor(t) + ε", 0.65, 2.35, 8, 0.35, size=14, bold=True, color=COLORS["ink"], margin=0)
 
-    headers = ["因子", "β均值", "β标准差", "p均值", "t均值", "有效月数", "判定"]
+    headers = ["因子", "β均值", "β标准差", "FM-t", "FM-p", "有效月数", "判定"]
     rows = []
-    for f in ["SMB", "PE_inv", "Quality"]:
+    for f in factor_test:
         info = factor_test[f]
         rows.append([
             {"SMB": "SMB(规模)", "PE_inv": "PE_inv(价值)", "Quality": "Quality(质量)"}[f],
             f"{info['beta_mean']:.6f}",
             f"{info['beta_std']:.6f}",
-            f"{info['p_mean']:.4f}",
-            f"{info['t_mean']:.4f}",
+            f"{info['fm_t']:.4f}",
+            f"{info['fm_p']:.4f}",
             str(info['n_months']),
-            "✗" if str(info['valid']) == "False" else "✓",
+            "✓" if info['valid'] else "✗",
         ])
     add_table(slide, headers, rows, 0.65, 2.8, 12, row_h=0.45, col_widths=[1.8, 1.6, 1.6, 1.3, 1.3, 1.2, 0.9])
 
-    add_text(slide, "结论: 三因子均未通过单因子显著性检验(p>0.05)，按作业要求全部纳入后续分析", 0.65, 4.8, 10, 0.3, size=11, color=COLORS["red"], margin=0)
+    add_text(slide, "结论: SMB(规模因子)通过Fama-MacBeth检验(FM-t=-2.63,p=0.01); PE_inv和Quality未通过，仅SMB纳入后续模型", 0.65, 4.8, 11, 0.3, size=11, color=COLORS["muted"], margin=0)
 
     # ========== Slide 6: IC/IR因子质检 ==========
     slide = prs.slides.add_slide(blank)
     add_title(slide, "模块3：IC/IR因子质检", "Z-Score标准化 → 月度截面Pearson IC → IR计算")
     add_footer(slide, 6)
 
-    headers = ["因子", "IC均值", "IC标准差", "IR", "评级", "IR判定", "IC阈值"]
+    headers = ["因子", "IC均值", "IC标准差", "IR", "评级", "IR判定"]
     rows = []
-    for f in ["SMB", "PE_inv", "Quality"]:
+    for f in ic_ir:
         info = ic_ir[f]
         rows.append([
             {"SMB": "SMB(规模)", "PE_inv": "PE_inv(价值)", "Quality": "Quality(质量)"}[f],
@@ -285,9 +285,8 @@ def build_ppt():
             f"{info['IR']:.4f}",
             info['grade'],
             "✓" if abs(info['IR']) > 0.1 else "✗",
-            ">0.05优秀, >0.02预测" if f == "Quality" else "",
         ])
-    add_table(slide, headers, rows, 0.65, 1.6, 12, row_h=0.5, col_widths=[1.8, 1.3, 1.3, 1.3, 1.5, 1.0, 2.5])
+    add_table(slide, headers, rows, 0.65, 1.6, 12, row_h=0.5, col_widths=[2.0, 1.5, 1.5, 1.5, 2.0, 1.2])
 
     # Insert IC/IR chart
     chart_path = OUT_DIR / "ic_ir_summary.png"
@@ -304,30 +303,39 @@ def build_ppt():
         slide.shapes.add_picture(str(ic_path), Inches(0.4), Inches(1.4), Inches(12.5), Inches(5.2))
 
     lines = [
-        "Quality因子IC均值最高(0.023)，具备预测能力 | SMB因子IC为负(-0.034)暗示大盘股溢价",
-        "三因子IC标准差均较大(0.19-0.26)，月度IC波动剧烈，因子预测稳定性有限",
+        "SMB因子IC为负(-0.034)暗示上证50内大盘股溢价 | 唯一通过Fama-MacBeth检验的有效因子",
+        "IC标准差较大(0.22)，月度IC波动剧烈，因子预测稳定性有限",
     ]
     add_rich_lines(slide, lines, 0.65, 6.7, 12, 0.6, size=11, color=COLORS["muted"])
 
     # ========== Slide 8: 多因子回归赋权 ==========
     slide = prs.slides.add_slide(blank)
-    add_title(slide, "模块4：多因子回归静态赋权", "Return(t+1) = α + w1×SMB_std + w2×PE_inv_std + w3×Quality_std + ε")
+    add_title(slide, "模块4：多因子回归静态赋权", "Return(t+1) = α + Σ wi × Factor_i_std + ε")
     add_footer(slide, 8)
 
     headers = ["参数", "系数", "p值", "显著性", "N", "R²"]
-    rows = [
-        ["截距 α", f"{summary['回归截距']:.6f}", "0.0000", "***", "", ""],
-        ["w1 (SMB)", f"{weights['SMB']:.6f}", "0.0033", "**", "", ""],
-        ["w2 (PE_inv)", f"{weights['PE_inv']:.6f}", "0.9007", "不显著", "", ""],
-        ["w3 (Quality)", f"{weights['Quality']:.6f}", "0.2860", "不显著", "4,561", f"{summary['回归R2']:.4f}"],
-    ]
+    rows = [["截距 α", f"{summary['回归截距']:.6f}", "0.0000", "***", "", ""]]
+    valid_factors = summary["有效因子"]
+    w = summary["因子权重"]
+    for i, f in enumerate(valid_factors):
+        p_key = f"{f}_pvalue"
+        p_val = weights.get(p_key, 1.0)
+        sig = "***" if p_val < 0.01 else "**" if p_val < 0.05 else "不显著"
+        is_last = (i == len(valid_factors) - 1)
+        rows.append([
+            f"w{i+1} ({f})",
+            f"{w[f]:.6f}",
+            f"{p_val:.4f}",
+            sig,
+            str(4561) if is_last else "",
+            f"{summary['回归R2']:.4f}" if is_last else "",
+        ])
     add_table(slide, headers, rows, 0.65, 1.5, 10, row_h=0.45, col_widths=[1.8, 1.6, 1.2, 1.2, 1.2, 1.2])
-
+    score_terms = " + ".join([f"{w[f]:.6f}×{f}_std" for f in valid_factors])
     lines = [
-        "综合得分: Score = -0.00547×SMB_std + 0.00023×PE_inv_std + 0.00185×Quality_std",
-        "· SMB权重为负 → 小盘股得分更高  ·  Quality权重为正 → 高ROE+高分红+高增长得分更高",
-        "· PE_inv权重≈0 → 估值因子在控制规模和质量的条件下几乎无边际贡献",
-        "· 模型R²=0.24% → 因子对收益线性解释力低（月度横截面回归常见现象）",
+        f"综合得分: Score = {score_terms}",
+        "· SMB权重为负 → 小盘股得分更高（市值越小，得分越高）",
+        f"· 模型R²={summary['回归R2']:.2%} → 因子对收益线性解释力低（月度横截面回归常见现象）",
     ]
     add_rich_lines(slide, lines, 0.65, 3.8, 12, 3.5, size=12)
 
@@ -469,13 +477,13 @@ def build_ppt():
     add_text(slide, "结论与展望", 0.8, 1.2, 11, 0.7, size=34, bold=True, color=COLORS["paper"], margin=0)
 
     lines = [
-        "1. Quality因子表现最优: IC=0.023, IR=0.116, 是唯一具备预测能力的因子",
+        "1. SMB(规模因子)是唯一有效的因子: FM-t=-2.63, p=0.01, IC=-0.034, 方向负暗示小盘股溢价",
         "",
-        "2. 三因子组合样本外效果显著: 策略+144% vs 上证+39%, 超额+105%",
+        "2. SMB单因子样本外表现强劲: 策略+386% vs 上证+39%, 超额+346%",
         "",
-        "3. 持仓高度集中于澜起科技: 全程22/22月选中, 半导体/AI产业链驱动",
+        "3. PE_inv和Quality未通过统计检验, 在月度频率下的预测能力有限",
         "",
-        "4. 模型R²极低(0.24%): 线性模型的解释力有限, 可引入ML方法提升",
+        "4. 回测周期短(23个月), 受2024-2025 AI半导体牛市影响显著, 需更长区间验证",
         "",
         "5. 改进方向: 引入动量/波动率因子 → 行业中性化 → 滚动动态权重 → XGBoost/LGBM",
     ]

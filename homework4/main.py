@@ -105,8 +105,9 @@ def main(refresh: bool = False) -> None:
     for f in FACTORS:
         info = factor_details[f]
         status = "✓ 有效" if info["valid"] else "✗ 无效"
+        fm_t_str = f"{info['fm_t']:.4f}" if not pd.isna(info.get('fm_t', np.nan)) else "N/A"
         print(f"  {FACTOR_NAMES.get(f, f)}: β均值={info['beta_mean']:.6f}, "
-              f"p均值={info['p_mean']:.4f}, t均值={info['t_mean']:.4f} [{status}]")
+              f"FM_t={fm_t_str}, p={info.get('fm_p', np.nan):.4f} [{status}]")
 
     print(f"\n有效因子: {valid_factors}")
     if not valid_factors:
