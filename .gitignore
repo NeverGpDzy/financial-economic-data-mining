@@ -23,6 +23,7 @@ env/
 
 # Data (large files, keep structure)
 data/**/*.csv
+data/**/*.pkl
 !data/**/.gitkeep
 
 # Model outputs
