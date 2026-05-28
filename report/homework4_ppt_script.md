@@ -1,6 +1,6 @@
 # 作业四PPT详细脚本
 
-> **使用说明**：本文件是PPT的逐页脚本，包含每页的文字内容、图片位置、排版建议。
+> **使用说明**：本文件是PPT的逐页脚本，包含每页的文字内容、图片、排版建议。
 > 请将本文件交给AI（如GPT-4、Claude等），让它根据此脚本生成PPT。
 >
 > **图片目录**：`outputs/homework4/` 下的所有PNG文件
@@ -130,8 +130,6 @@
 - β不显著：9只
 - 判定：全部保留进入因子检验
 
-**右下角**：显示β显著比例的饼图或柱状图
-
 ---
 
 ## 第8页：模块2 - 单因子检验
@@ -162,7 +160,9 @@
 |------|--------|----------|-----|------|
 | SMB | -0.042 | 0.216 | -0.195 | ✓ 通过 |
 
-**右侧**：插入图片 `ic_ir_summary.png`
+**右侧**：
+
+![IC/IR汇总](../outputs/homework4/ic_ir_summary.png)
 
 **说明**：
 - IC为负→因子与未来收益负相关
@@ -174,7 +174,7 @@
 
 **标题**：IC时间序列
 
-**居中插入图片**：`ic_series.png`
+![IC时间序列](../outputs/homework4/ic_series.png)
 
 **说明**：IC月度波动较大，但整体均值为负，验证小盘股溢价
 
@@ -211,7 +211,7 @@ Score = -0.0081 × SMB_std
 
 **标题**：因子权重可视化
 
-**居中插入图片**：`factor_weights.png`
+![因子权重](../outputs/homework4/factor_weights.png)
 
 ---
 
@@ -230,13 +230,15 @@ Score = -0.0081 × SMB_std
 | 夏普比率 | 1.000 | — | — |
 | 卡玛比率 | 2.045 | — | — |
 
+![回测指标表](../outputs/homework4/metrics_table.png)
+
 ---
 
 ## 第14页：模块5 - 净值对比图
 
 **标题**：策略净值 vs 上证指数
 
-**居中插入图片**：`nav_vs_market.png`
+![策略净值vs上证指数](../outputs/homework4/nav_vs_market.png)
 
 **说明**：策略在2024年9-10月大幅跑赢市场，主要受益于小盘股行情
 
@@ -246,7 +248,7 @@ Score = -0.0081 × SMB_std
 
 **标题**：回撤分析
 
-**居中插入图片**：`drawdown.png`
+![回撤分析](../outputs/homework4/drawdown.png)
 
 **说明**：
 - 最大回撤-17.49%
@@ -319,12 +321,12 @@ Score = -0.0081 × SMB_std
 
 | 文件名 | 用途 | 建议位置 |
 |--------|------|----------|
+| `ic_ir_summary.png` | IC/IR汇总图 | 第9页 |
+| `ic_series.png` | IC时间序列 | 第10页 |
+| `factor_weights.png` | 因子权重 | 第12页 |
+| `metrics_table.png` | 回测指标表 | 第13页 |
 | `nav_vs_market.png` | 策略净值vs上证指数 | 第14页 |
 | `drawdown.png` | 回撤分析 | 第15页 |
-| `ic_series.png` | IC时间序列 | 第10页 |
-| `ic_ir_summary.png` | IC/IR汇总 | 第9页 |
-| `factor_weights.png` | 因子权重 | 第12页 |
-| `metrics_table.png` | 回测指标表 | 可选，第13页 |
 
 ---
 
