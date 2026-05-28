@@ -145,8 +145,12 @@ def compute_ic_ir(train_df: pd.DataFrame, valid_factors: list[str]) -> dict:
             sub = train_df[train_df["date"] == month].dropna(subset=[std_col, "next_excess_return"])
             if len(sub) < 10:
                 continue
+            # Skip if factor has zero variance (all values identical)
+            if sub[std_col].std() == 0:
+                continue
             ic = sub[[std_col, "next_excess_return"]].corr(method="pearson").iloc[0, 1]
-            ic_list.append(ic)
+            if not np.isnan(ic):
+                ic_list.append(ic)
 
         if not ic_list:
             ic_results[f] = {"IC_mean": np.nan, "IC_std": np.nan, "IR": np.nan, "grade": "无效"}

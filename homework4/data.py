@@ -1,164 +1,11 @@
-"""Module 1: Data fetching, factor calculation, cleaning, and train/test split."""
+"""Module 1: Data loading from pre-processed supporting data files."""
 
 from __future__ import annotations
 
-import pickle
 from pathlib import Path
 
-import baostock as bs
 import numpy as np
 import pandas as pd
-
-
-def _get_sz50_stocks() -> pd.DataFrame:
-    """Query SSE 50 constituent stocks via baostock."""
-    rs = bs.query_sz50_stocks()
-    rows = []
-    while rs.error_code == "0" and rs.next():
-        rows.append(rs.get_row_data())
-    df = pd.DataFrame(rows, columns=rs.fields)
-    return df
-
-
-def _fetch_daily(code: str, start: str, end: str, fields: str) -> pd.DataFrame:
-    """Fetch daily K-line data and resample to month-end."""
-    rs = bs.query_history_k_data_plus(
-        code, fields, start_date=start, end_date=end,
-        frequency="d", adjustflag="2",
-    )
-    if rs.error_code != "0":
-        return pd.DataFrame()
-    rows = []
-    while rs.next():
-        rows.append(rs.get_row_data())
-    if not rows:
-        return pd.DataFrame()
-    df = pd.DataFrame(rows, columns=rs.fields)
-    df["date"] = pd.to_datetime(df["date"])
-    numeric_cols = [c for c in df.columns if c not in ("date", "code", "code_name", "tradestatus")]
-    for c in numeric_cols:
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-
-    # Resample to month-end: keep last trading day of each calendar month
-    monthly = df.set_index("date").resample("M").last().dropna(subset=["close"]).reset_index()
-    return monthly
-
-
-def _fetch_financials(code: str, years: list[int]) -> dict[int, dict]:
-    """Fetch annual financial data (Q4 profit + growth + cash flow) for a stock."""
-    result = {}
-    for year in years:
-        fin: dict = {"year": year}
-
-        # Q4 profit data
-        rs = bs.query_profit_data(code=code, year=year, quarter=4)
-        if rs.error_code == "0":
-            while rs.next():
-                row = rs.get_row_data()
-                fields = rs.fields
-                for i, f in enumerate(fields):
-                    fin[f] = row[i]
-
-        # Growth data
-        rs = bs.query_growth_data(code=code, year=year)
-        if rs.error_code == "0":
-            while rs.next():
-                row = rs.get_row_data()
-                fields = rs.fields
-                for i, f in enumerate(fields):
-                    fin[f"g_{f}"] = row[i]
-
-        # Cash flow data
-        rs = bs.query_cash_flow_data(code=code, year=year, quarter=4)
-        if rs.error_code == "0":
-            while rs.next():
-                row = rs.get_row_data()
-                fields = rs.fields
-                for i, f in enumerate(fields):
-                    fin[f"cf_{f}"] = row[i]
-
-        result[year] = fin
-    return result
-
-
-def _compute_factors(df: pd.DataFrame, financials: dict[int, dict]) -> pd.DataFrame:
-    """Merge financial data and compute factors: SMB, PE_inv, Quality.
-
-    Quality = 销售净利率 × (经营性现金净流量/净利润) × 净利润同比增长率
-            = npMargin × CFOToNP × YOYNI
-
-    Financial data is lagged by one year to avoid look-ahead bias:
-    year N annual reports are published ~March of year N+1.
-    """
-    out = df.copy()
-
-    # First pass: extract raw financial data per year
-    yearly_data = {}
-    for yr in sorted(financials.keys()):
-        fin = financials[yr]
-        yd: dict = {"year": yr}
-
-        shares_val = pd.to_numeric(fin.get("totalShare", np.nan), errors="coerce")
-        yd["totalShare"] = shares_val if not pd.isna(shares_val) and shares_val > 0 else np.nan
-
-        np_margin = pd.to_numeric(fin.get("npMargin", np.nan), errors="coerce")
-        yd["npMargin"] = np_margin if not pd.isna(np_margin) else np.nan
-
-        cfo_to_np = pd.to_numeric(fin.get("cf_CFOToNP", np.nan), errors="coerce")
-        yd["CFOToNP"] = cfo_to_np if not pd.isna(cfo_to_np) else np.nan
-
-        g_val = pd.to_numeric(fin.get("g_YOYNI", np.nan), errors="coerce")
-        yd["profit_growth"] = g_val if not pd.isna(g_val) else np.nan
-
-        yearly_data[yr] = yd
-
-    # Second pass: assign lagged data to months
-    last = {k: np.nan for k in ["totalShare", "npMargin", "CFOToNP", "profit_growth"]}
-
-    for yr in out["date"].dt.year.unique():
-        # Use financial data from year yr-1 (latest available at yr's start)
-        data_yr = yr - 1
-        if data_yr in yearly_data:
-            yd = yearly_data[data_yr]
-            for k in last:
-                if not pd.isna(yd.get(k, np.nan)):
-                    last[k] = yd[k]
-
-        mask = out["date"].dt.year == yr
-        if mask.any():
-            out.loc[mask, "total_shares"] = last["totalShare"]
-            out.loc[mask, "np_margin"] = last["npMargin"]
-            out.loc[mask, "cfo_to_np"] = last["CFOToNP"]
-            out.loc[mask, "profit_growth"] = last["profit_growth"]
-
-    # Forward fill remaining NaN
-    for col in ["total_shares", "np_margin", "cfo_to_np", "profit_growth"]:
-        if col in out.columns:
-            out[col] = out[col].ffill().bfill()
-
-    # Market cap = total_shares × close price (yuan)
-    if "total_shares" in out.columns and "close" in out.columns:
-        out["market_cap"] = out["total_shares"] * out["close"]
-    else:
-        out["market_cap"] = np.nan
-
-    # PE_inv = 1 / PE_TTM (handle negative PE → set PE_inv to 0)
-    out["pe_ttm"] = out["peTTM"].replace(0, np.nan)
-    out["PE_inv"] = 1.0 / out["pe_ttm"]
-    out.loc[out["pe_ttm"] < 0, "PE_inv"] = 0.0
-
-    # Quality = npMargin × CFOToNP × profit_growth
-    out["Quality"] = (
-        out.get("np_margin", np.nan) *
-        out.get("cfo_to_np", np.nan) *
-        out.get("profit_growth", np.nan)
-    )
-    out["Quality"] = out["Quality"].clip(-10, 10)
-
-    # SMB = market_cap
-    out["SMB"] = out["market_cap"]
-
-    return out
 
 
 def _winsorize_3sigma(s: pd.Series) -> pd.Series:
@@ -169,12 +16,92 @@ def _winsorize_3sigma(s: pd.Series) -> pd.Series:
     return s.clip(mu - 3 * sigma, mu + 3 * sigma)
 
 
-def get_data(refresh: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Main data pipeline: fetch, compute factors, clean, split.
+def load_supporting_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load pre-processed data from supporting CSV files.
 
     Returns (train_df, test_df, mkt_df).
     """
-    from homework4.config import DATA_DIR, MARKET_CODE, TRAIN_START, TRAIN_END, TEST_START, TEST_END
+    from homework4.config import DATA_DIR, RF_MONTHLY
+
+    csv_dir = DATA_DIR / "配套数据" / "csv"
+
+    if not csv_dir.exists():
+        raise FileNotFoundError(f"配套数据目录不存在: {csv_dir}")
+
+    print("从配套数据文件加载...")
+
+    # 1. Load stock list
+    stock_list = pd.read_csv(csv_dir / "stock_list.csv", encoding="utf-8-sig")
+    print(f"  股票池: {len(stock_list)} 只股票")
+
+    # 2. Load index monthly data
+    mkt_df = pd.read_csv(csv_dir / "index_monthly.csv", parse_dates=["trade_date"], encoding="utf-8-sig")
+    mkt_df = mkt_df.rename(columns={"trade_date": "date", "mkt_close": "close", "mkt_ret": "mkt_return"})
+    mkt_df = mkt_df.set_index("date").sort_index()
+    mkt_df["mkt_excess"] = mkt_df["mkt_return"] - RF_MONTHLY
+    print(f"  上证指数: {mkt_df.index.min().date()} ~ {mkt_df.index.max().date()}")
+
+    # 3. Load train factor data
+    train_factor = pd.read_csv(csv_dir / "train_factor.csv", parse_dates=["trade_date"], encoding="utf-8-sig")
+    train_factor = train_factor.rename(columns={"trade_date": "date", "stock_code": "code"})
+
+    # 4. Load train return data
+    train_ret = pd.read_csv(csv_dir / "train_ret.csv", parse_dates=["trade_date"], encoding="utf-8-sig")
+    train_ret = train_ret.rename(columns={"trade_date": "date", "stock_code": "code", "monthly_ret": "return"})
+
+    # 5. Load test factor data
+    test_factor = pd.read_csv(csv_dir / "test_factor.csv", parse_dates=["trade_date"], encoding="utf-8-sig")
+    test_factor = test_factor.rename(columns={"trade_date": "date", "stock_code": "code"})
+
+    # 6. Load test return data
+    test_ret = pd.read_csv(csv_dir / "test_ret.csv", parse_dates=["trade_date"], encoding="utf-8-sig")
+    test_ret = test_ret.rename(columns={"trade_date": "date", "stock_code": "code", "monthly_ret": "return"})
+
+    # 7. Merge factor and return data
+    train_df = pd.merge(train_factor, train_ret, on=["date", "code"], how="inner")
+    test_df = pd.merge(test_factor, test_ret, on=["date", "code"], how="inner")
+
+    # 8. Add stock names from stock_list
+    # Note: stock_list only has stock_code, we'll use code as name for simplicity
+    train_df["name"] = train_df["code"]
+    test_df["name"] = test_df["code"]
+
+    # 9. Compute next excess return (target variable)
+    train_df = train_df.sort_values(["code", "date"]).reset_index(drop=True)
+    test_df = test_df.sort_values(["code", "date"]).reset_index(drop=True)
+
+    train_df["next_excess_return"] = train_df.groupby("code")["excess_ret"].transform(lambda x: x.shift(-1))
+    test_df["next_excess_return"] = test_df.groupby("code")["excess_ret"].transform(lambda x: x.shift(-1))
+
+    # 10. Rename columns to match expected names
+    # smb -> SMB, pe_recip -> PE_inv, quality -> Quality, excess_ret -> excess_return
+    rename_map = {"smb": "SMB", "pe_recip": "PE_inv", "quality": "Quality", "excess_ret": "excess_return"}
+    train_df = train_df.rename(columns=rename_map)
+    test_df = test_df.rename(columns=rename_map)
+
+    # 11. Apply 3-sigma winsorization to factors
+    print("数据清洗：3σ缩尾处理...")
+    for f in ["SMB", "PE_inv", "Quality"]:
+        train_df[f] = train_df.groupby("date")[f].transform(_winsorize_3sigma)
+        test_df[f] = test_df.groupby("date")[f].transform(_winsorize_3sigma)
+
+    # 12. Drop rows with NaN in critical fields
+    train_df = train_df.dropna(subset=["SMB", "PE_inv", "Quality", "next_excess_return"])
+    test_df = test_df.dropna(subset=["SMB", "PE_inv", "Quality", "next_excess_return"])
+
+    print(f"训练集: {len(train_df)} 条, 股票数: {train_df['code'].nunique()}")
+    print(f"回测集: {len(test_df)} 条, 股票数: {test_df['code'].nunique()}")
+
+    return train_df, test_df, mkt_df
+
+
+def get_data(refresh: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Main data pipeline: load from supporting data files.
+
+    Returns (train_df, test_df, mkt_df).
+    """
+    import pickle
+    from homework4.config import DATA_DIR
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = DATA_DIR / "processed_data.pkl"
@@ -185,113 +112,11 @@ def get_data(refresh: bool = False) -> tuple[pd.DataFrame, pd.DataFrame, pd.Data
         print("从缓存加载已处理数据...")
         return data["train"], data["test"], data["mkt"]
 
-    bs.login()
+    # Load from supporting data
+    train_df, test_df, mkt_df = load_supporting_data()
 
-    try:
-        # 1. Get SSE 50 stock list
-        print("获取上证50成分股...")
-        sz50 = _get_sz50_stocks()
-        stocks = sz50["code"].tolist()
-        stock_names = dict(zip(sz50["code"], sz50["code_name"]))
-        print(f"  共 {len(stocks)} 只股票")
+    # Cache
+    with open(cache_path, "wb") as f:
+        pickle.dump({"train": train_df, "test": test_df, "mkt": mkt_df}, f)
 
-        # 2. Get market index (monthly close only, using frequency="m" for index)
-        print("获取上证指数月度数据...")
-        rs = bs.query_history_k_data_plus(
-            MARKET_CODE, "date,close", start_date=TRAIN_START, end_date=TEST_END,
-            frequency="m", adjustflag="2",
-        )
-        mkt_rows = []
-        while rs.next():
-            mkt_rows.append(rs.get_row_data())
-        mkt_raw = pd.DataFrame(mkt_rows, columns=rs.fields)
-        if mkt_raw.empty:
-            raise RuntimeError("无法获取上证指数数据")
-        mkt_raw["date"] = pd.to_datetime(mkt_raw["date"])
-        mkt_raw["close"] = pd.to_numeric(mkt_raw["close"], errors="coerce")
-        # Normalize to calendar month-end for alignment with stock daily-resampled data
-        mkt_raw["date"] = mkt_raw["date"] + pd.offsets.MonthEnd(0)
-        mkt_raw = mkt_raw.set_index("date").sort_index()
-        mkt_raw["mkt_return"] = mkt_raw["close"].pct_change()
-        mkt_raw["mkt_excess"] = mkt_raw["mkt_return"] - 0.0015
-        mkt_df = mkt_raw.copy()
-
-        # 3. Get stock data (monthly from daily resampling for PE_TTM support)
-        print("获取个股数据 (月度K线 + PE_TTM)...")
-        years_list = list(range(2015, 2026))
-
-        all_data = []
-        for i, code in enumerate(stocks):
-            name = stock_names.get(code, code)
-            print(f"  [{i+1}/{len(stocks)}] {code} {name}")
-
-            # Fetch daily with close + peTTM, resample to month-end
-            df = _fetch_daily(code, TRAIN_START, TEST_END, "date,close,peTTM")
-            if df.empty:
-                print(f"    → 无K线数据，跳过")
-                continue
-
-            # Financials
-            financials = _fetch_financials(code, years_list)
-
-            # Compute factors
-            df = _compute_factors(df, financials)
-            df["code"] = code
-            df["name"] = name
-            all_data.append(df)
-
-        if not all_data:
-            raise RuntimeError("未获取到任何股票数据")
-
-        # 4. Merge all stocks
-        all_df = pd.concat(all_data, ignore_index=True)
-        all_df = all_df.sort_values(["date", "code"]).reset_index(drop=True)
-
-        # 5. Compute returns and excess returns
-        all_df["return"] = all_df.groupby("code")["close"].transform(lambda x: x.pct_change())
-        all_df["excess_return"] = all_df["return"] - 0.0015
-        all_df["next_excess_return"] = all_df.groupby("code")["excess_return"].transform(lambda x: x.shift(-1))
-
-        # 6. Forward fill missing financial data
-        fill_cols = ["market_cap", "PE_inv", "Quality", "SMB", "np_margin", "cfo_to_np", "profit_growth"]
-        for col in fill_cols:
-            if col in all_df.columns:
-                all_df[col] = all_df.groupby("code")[col].transform(
-                    lambda x: x.replace([np.inf, -np.inf], np.nan).ffill()
-                )
-
-        # 7. Drop rows with NaN in critical fields
-        all_df = all_df.dropna(subset=["close", "return", "excess_return"])
-
-        # Factor NaNs → fill with cross-sectional mean per month
-        for f in ["PE_inv", "Quality", "SMB"]:
-            if f in all_df.columns:
-                all_df[f] = all_df.groupby("date")[f].transform(lambda x: x.fillna(x.mean()))
-
-        all_df = all_df.dropna(subset=["PE_inv", "Quality", "SMB", "next_excess_return"])
-
-        # 8. Winsorize factors (3-sigma within each month cross-section)
-        print("数据清洗：3σ缩尾处理...")
-        for f in ["SMB", "PE_inv", "Quality"]:
-            all_df[f] = all_df.groupby("date")[f].transform(_winsorize_3sigma)
-
-        # 9. Split train / test
-        TS = pd.to_datetime(TRAIN_START)
-        TE = pd.to_datetime(TRAIN_END)
-        TTS = pd.to_datetime(TEST_START)
-        TTE = pd.to_datetime(TEST_END)
-
-        train_df = all_df[(all_df["date"] >= TS) & (all_df["date"] <= TE)].copy()
-        test_df = all_df[(all_df["date"] >= TTS) & (all_df["date"] <= TTE)].copy()
-
-        print(f"训练集: {len(train_df)} 条, 回测集: {len(test_df)} 条")
-        print(f"训练集股票数: {train_df['code'].nunique()}, 回测集股票数: {test_df['code'].nunique()}")
-
-        # Cache
-        with open(cache_path, "wb") as f:
-            pickle.dump({"train": train_df, "test": test_df, "mkt": mkt_df}, f)
-
-        return train_df, test_df, mkt_df
-
-    finally:
-        bs.logout()
+    return train_df, test_df, mkt_df

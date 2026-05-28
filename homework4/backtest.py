@@ -45,92 +45,74 @@ def run_backtest(
     top_n: int = 3,
     max_single_weight: float = 0.40,
 ) -> tuple[pd.DataFrame, dict, list[dict]]:
-    """Out-of-sample monthly-rebalanced backtest with NO look-ahead bias.
+    """Out-of-sample monthly-rebalanced backtest using return data.
 
     Key principle: At end of month t, use Factors(t) to predict Return(t+1).
-    Select stocks at t's close → hold through t+1 → realize P&L at t+1 close.
+    Select stocks at t → hold through t+1 → realize P&L at t+1.
 
-    Shares are tracked explicitly to avoid fee double-counting.
+    Uses monthly returns directly (no price tracking needed).
     """
     months = sorted(test_df["date"].unique())
     if len(months) < 2:
         raise ValueError("Need at least 2 months for backtest.")
 
-    # Pre-build price lookup
-    price_map = {}
-    for month in months:
-        sub = test_df[test_df["date"] == month]
-        price_map[month] = dict(zip(sub["code"], sub["close"]))
-
-    cash = init_capital
-    # holdings: {code: {"shares": int}}  — shares held
-    holdings: dict[str, dict] = {}
-    nav_history = []
+    nav = init_capital
+    nav_history = [{"date": months[0], "nav": nav, "selected": []}]
     trade_records = []
 
-    # --- Month 0: initial entry ---
-    month0 = months[0]
-    sub0 = test_df[test_df["date"] == month0]
-    ranked0 = select_top_stocks(sub0, score_func, top_n=top_n)
-    selected0 = _pick_tradeable(ranked0, top_n)
-
-    if not selected0:
-        raise RuntimeError("First month has no tradeable stocks.")
-
-    cash, holdings = _buy_stocks(selected0, price_map[month0], cash, fee, max_single_weight)
-    port_value = cash + _holdings_value(holdings, price_map[month0])
-    nav_history.append({"date": month0, "nav": port_value, "selected": selected0})
-
-    # --- Subsequent months ---
-    for mi in range(1, len(months)):
+    # For each month except the last, select stocks and compute next month return
+    for mi in range(len(months) - 1):
         month = months[mi]
+        next_month = months[mi + 1]
 
-        # Step 1: Mark-to-market holdings at this month's prices
-        port_value = cash + _holdings_value(holdings, price_map[month])
-
-        # Step 2: Compute month return and record
-        nav = port_value
-        month_return = (nav / nav_history[-1]["nav"] - 1) if nav_history[-1]["nav"] > 0 else 0.0
-
-        # Step 3: Sell all holdings at this month's close price (with fee)
-        sell_proceeds = 0.0
-        for code in list(holdings.keys()):
-            price = price_map[month].get(code, np.nan)
-            if not pd.isna(price) and price > 0:
-                shares = holdings[code]["shares"]
-                sell_proceeds += shares * price * (1 - fee)
-            del holdings[code]
-        cash = sell_proceeds
-
-        # Step 4: Score and select for next month
+        # Step 1: Score and select stocks for this month
         sub = test_df[test_df["date"] == month]
         ranked = select_top_stocks(sub, score_func, top_n=top_n)
         selected = _pick_tradeable(ranked, top_n)
 
-        if selected:
-            cash, holdings = _buy_stocks(selected, price_map[month], cash, fee, max_single_weight)
+        if not selected:
+            # No tradeable stocks, keep cash
             trade_records.append({
-                "month": str(month),
-                "holdings": ", ".join(selected),
-                "n_holdings": len(selected),
-                "month_return": float(month_return),
-            })
-        else:
-            cash = nav
-            holdings = {}
-            trade_records.append({
-                "month": str(month),
+                "month": str(month)[:10],
                 "holdings": "空仓",
                 "n_holdings": 0,
-                "month_return": float(month_return),
+                "month_return": 0.0,
             })
+            nav_history.append({"date": next_month, "nav": nav, "selected": []})
+            continue
 
-        port_value = cash + _holdings_value(holdings, price_map[month])
-        nav_history.append({
-            "date": month,
-            "nav": port_value,
-            "selected": selected if selected else [],
+        # Step 2: Get next month's returns for selected stocks
+        next_sub = test_df[(test_df["date"] == next_month) & (test_df["code"].isin(selected))]
+        if next_sub.empty:
+            # No return data, keep current nav
+            trade_records.append({
+                "month": str(month)[:10],
+                "holdings": ", ".join(selected),
+                "n_holdings": len(selected),
+                "month_return": 0.0,
+            })
+            nav_history.append({"date": next_month, "nav": nav, "selected": selected})
+            continue
+
+        # Step 3: Compute portfolio return (equal weight)
+        stock_returns = next_sub.set_index("code")["return"]
+        # Equal weight portfolio return
+        port_return = stock_returns.mean()
+
+        # Step 4: Deduct transaction costs (buy + sell)
+        # Assume full turnover each month
+        port_return_after_fee = port_return - 2 * fee
+
+        # Step 5: Update NAV
+        nav = nav * (1 + port_return_after_fee)
+
+        trade_records.append({
+            "month": str(month)[:10],
+            "holdings": ", ".join(selected),
+            "n_holdings": len(selected),
+            "month_return": float(port_return_after_fee),
         })
+        nav_history.append({"date": next_month, "nav": nav, "selected": selected})
 
     # Build result DataFrame
     result = pd.DataFrame(nav_history)
@@ -196,45 +178,3 @@ def _pick_tradeable(ranked: pd.DataFrame, top_n: int) -> list[str]:
             break
         selected.append(row["code"])
     return selected
-
-
-def _buy_stocks(
-    selected: list[str],
-    prices: dict[str, float],
-    cash: float,
-    fee: float,
-    max_single_weight: float,
-) -> tuple[float, dict[str, dict]]:
-    """Buy selected stocks with explicit share tracking.
-
-    Returns (remaining_cash, holdings_dict).
-    holdings_dict: {code: {"shares": int}}
-    """
-    holdings = {}
-    n = len(selected)
-    weight_per_stock = min(1.0 / n, max_single_weight)
-    total_capital = cash
-
-    for code in selected:
-        price = prices.get(code, np.nan)
-        if pd.isna(price) or price <= 0:
-            continue
-
-        alloc = total_capital * weight_per_stock
-        shares = int(alloc / (price * (1 + fee))) if price > 0 else 0
-        if shares > 0:
-            cost = shares * price * (1 + fee)
-            holdings[code] = {"shares": shares}
-            cash -= cost
-
-    return cash, holdings
-
-
-def _holdings_value(holdings: dict[str, dict], prices: dict[str, float]) -> float:
-    """Compute total market value of holdings at given prices."""
-    total = 0.0
-    for code, pos in holdings.items():
-        price = prices.get(code, np.nan)
-        if not pd.isna(price) and price > 0:
-            total += pos["shares"] * price
-    return total
