@@ -112,15 +112,24 @@ def compute_factors(daily_all: pd.DataFrame, basic_all: pd.DataFrame,
     # ===== 四大标准因子（作业要求） =====
 
     # 1. Reversal因子：-前1日个股收益率（超短反转）
+    # 在量化实践中，"前1日收益率"指前一个交易日的收益率（即当日收益率T日）
+    # 因子在T日收盘后计算，使用T日已知数据，预测T+1日收益
     df['Reversal'] = -df['ret']
 
     # 2. Liquidity因子：Amihud非流动性指标 = |日收益率| / 日成交额
     df['Liquidity'] = df['ret'].abs() / (df['amount'] + 1e-10)
 
     # 3. MoneyFlow因子：资金流代理
-    #    使用 成交额×价格方向 / 流通市值 作为资金流代理
-    #    上涨日为正向流入，下跌日为流出；除以流通市值标准化
-    df['MoneyFlow'] = (df['amount'] * np.sign(df['ret'])) / (df['circ_mv'] + 1e-10)
+    #    作业要求：当日主力大单净额 = buy_amount - sell_amount
+    #            5日滚动净流入 = 大单净额.rolling(window=5, min_periods=1).sum()
+    #            MoneyFlow = 5日滚动净流入 ÷ 个股自由流通市值
+    #    数据限制：无个股级别buy_amount/sell_amount，使用 成交额×价格方向 作为代理
+    #    代理逻辑：上涨日成交额视为资金流入，下跌日视为资金流出
+    df['moneyflow_raw'] = df['amount'] * np.sign(df['ret'])
+    df['MoneyFlow'] = df.groupby('ts_code')['moneyflow_raw'].transform(
+        lambda x: x.rolling(window=5, min_periods=1).sum()
+    ) / (df['circ_mv'] + 1e-10)
+    df.drop(columns=['moneyflow_raw'], inplace=True)  # 清理临时列
 
     # 4. Value因子：PE_TTM倒数（正向化，低估值=高因子值）
     pe_valid = df['pe_ttm'].where(df['pe_ttm'] > 0, np.nan)
