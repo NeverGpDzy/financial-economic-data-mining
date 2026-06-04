@@ -26,7 +26,7 @@ data/**/*.csv
 data/**/*.pkl
 !data/**/.gitkeep
 
-# Model outputs
+# Model outputs (except homework4b which needs to be submitted)
 outputs/**/*.csv
 outputs/**/*.pkl
 outputs/**/*.joblib
@@ -35,6 +35,17 @@ outputs/**/*.json
 outputs/**/*.pptx
 outputs/**/*.jpg
 outputs/**/*.md
+
+# 作业4B输出文件（需要提交）
+!outputs/homework4b/
+outputs/homework4b/**
+!outputs/homework4b/**/*.csv
+!outputs/homework4b/**/*.pkl
+!outputs/homework4b/**/*.png
+!outputs/homework4b/**/*.json
+!outputs/homework4b/**/*.pptx
+!outputs/homework4b/**/*.md
+!outputs/homework4b/**/*.docx
 
 # Credentials & secrets
 .env
