@@ -7,3 +7,6 @@ lightgbm
 statsmodels
 python-pptx
 scipy
+Pillow
+python-docx
+pyarrow

@@ -39,11 +39,13 @@ outputs/**/*.md
 # 作业4B输出文件（需要提交）
 !outputs/homework4b/
 outputs/homework4b/**
+!outputs/homework4b/**/
 !outputs/homework4b/**/*.csv
 !outputs/homework4b/**/*.pkl
 !outputs/homework4b/**/*.png
 !outputs/homework4b/**/*.json
 !outputs/homework4b/**/*.pptx
+!outputs/homework4b/**/*.pdf
 !outputs/homework4b/**/*.md
 !outputs/homework4b/**/*.docx
 
@@ -58,7 +60,13 @@ credentials.json
 # Presentation files
 *.ppt
 *.pptx
+!outputs/homework4b/**/*.pptx
+!outputs/homework4b/**/*.pdf
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Local QA previews and obsolete drafts
+outputs/homework4b/ppt_preview*/
+outputs/homework4b/*before_polish.pptx
