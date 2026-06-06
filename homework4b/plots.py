@@ -219,6 +219,7 @@ def plot_feature_importance(importance_df: pd.DataFrame) -> str:
                 bar.get_y() + bar.get_height() / 2,
                 f'{p:.1%}', va='center', fontsize=10)
 
+    ax.set_xlim(0, importance.max() * 1.18)
     ax.set_xlabel('重要性（Gain）')
     ax.set_title('LGBM因子特征重要性', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3, axis='x')

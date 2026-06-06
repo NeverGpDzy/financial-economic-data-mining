@@ -75,7 +75,7 @@ def compute_factors(daily_all: pd.DataFrame, basic_all: pd.DataFrame,
     因子定义：
     - Reversal: -前1日个股收益率（超短反转）
     - Liquidity: Amihud非流动性指标（|日收益率| / 日成交额）
-    - MoneyFlow: 成交量×价格方向 / 流通市值（资金流代理）
+    - MoneyFlow: 5日滚动签名成交额净流入 / 流通市值（资金流代理）
     - Value: 1 / PE_TTM（价值因子）
 
     Returns:
@@ -94,8 +94,9 @@ def compute_factors(daily_all: pd.DataFrame, basic_all: pd.DataFrame,
     )
     df = df.sort_values(['ts_code', 'trade_date']).reset_index(drop=True)
 
-    # --- 计算个股收益率 ---
-    df['ret'] = df.groupby('ts_code')['close'].pct_change()
+    # --- 计算个股收益率：按作业公式 close / pre_close - 1 ---
+    pre_close = df['pre_close'].replace(0, np.nan)
+    df['ret'] = df['close'] / pre_close - 1
 
     # --- 计算市场收益率（沪深300指数） ---
     index_ret = index_df[['trade_date', 'pct_chg']].copy()
@@ -123,9 +124,11 @@ def compute_factors(daily_all: pd.DataFrame, basic_all: pd.DataFrame,
     #    作业要求：当日主力大单净额 = buy_amount - sell_amount
     #            5日滚动净流入 = 大单净额.rolling(window=5, min_periods=1).sum()
     #            MoneyFlow = 5日滚动净流入 ÷ 个股自由流通市值
-    #    数据限制：无个股级别buy_amount/sell_amount，使用 成交额×价格方向 作为代理
+    #    数据限制：本地数据仅有moneyflow_hsgt市场级北向资金，无个股级buy_amount/sell_amount。
+    #            因此使用5日滚动“成交额×价格方向”构造个股级资金流代理。
     #    代理逻辑：上涨日成交额视为资金流入，下跌日视为资金流出
-    df['moneyflow_raw'] = df['amount'] * np.sign(df['ret'])
+    #    Tushare amount单位为千元，circ_mv单位为万元，故amount/10后再除以circ_mv。
+    df['moneyflow_raw'] = (df['amount'] / 10.0) * np.sign(df['ret'])
     df['MoneyFlow'] = df.groupby('ts_code')['moneyflow_raw'].transform(
         lambda x: x.rolling(window=5, min_periods=1).sum()
     ) / (df['circ_mv'] + 1e-10)
@@ -134,26 +137,6 @@ def compute_factors(daily_all: pd.DataFrame, basic_all: pd.DataFrame,
     # 4. Value因子：PE_TTM倒数（正向化，低估值=高因子值）
     pe_valid = df['pe_ttm'].where(df['pe_ttm'] > 0, np.nan)
     df['Value'] = 1.0 / pe_valid
-
-    # ===== 扩展因子（增强模型预测能力） =====
-
-    # 5. Momentum因子：5日动量（短期趋势延续）
-    df['Momentum'] = df.groupby('ts_code')['ret'].transform(
-        lambda x: x.rolling(5, min_periods=3).sum()
-    )
-
-    # 6. Volatility因子：5日波动率（风险度量，负向因子）
-    df['Volatility'] = df.groupby('ts_code')['ret'].transform(
-        lambda x: x.rolling(5, min_periods=3).std()
-    )
-
-    # 7. Turnover因子：换手率（流动性度量）
-    df['Turnover'] = df['turnover_rate']
-
-    # 8. VolumeChange因子：成交量变化率（今日成交量 / 5日均量 - 1）
-    df['VolumeChange'] = df.groupby('ts_code')['vol'].transform(
-        lambda x: x / (x.rolling(5, min_periods=3).mean() + 1e-10) - 1
-    )
 
     # --- 计算次日超额收益（作为标签） ---
     df['next_excess_ret'] = df.groupby('ts_code')['excess_ret'].shift(-1)
@@ -179,21 +162,27 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     # 收益率相关缺失值：剔除停牌日（收益率为NaN的行）
     # 但保留因子数据，仅在后续建模时过滤
 
-    # 2. 3σ缩尾去极值
+    # 2. 按交易日截面做3σ缩尾去极值，避免用样本外年份估计全样本阈值。
     for col in factor_cols:
-        valid = df[col].dropna()
-        if len(valid) > 0:
+        before = df[col].copy()
+
+        def clip_daily(group: pd.Series) -> pd.Series:
+            valid = group.dropna()
+            if len(valid) < 2:
+                return group
             mu = valid.mean()
             sigma = valid.std()
-            lower = mu - 3 * sigma
-            upper = mu + 3 * sigma
-            n_clip = ((df[col] < lower) | (df[col] > upper)).sum()
-            df[col] = df[col].clip(lower, upper)
-            print(f"  {col}: μ={mu:.6f}, σ={sigma:.6f}, 缩尾{n_clip}个极端值")
+            if pd.isna(sigma) or sigma == 0:
+                return group
+            return group.clip(mu - 3 * sigma, mu + 3 * sigma)
 
-    # 3. 剔除收益率为NaN的行（停牌日）
+        df[col] = df.groupby('trade_date')[col].transform(clip_daily)
+        n_clip = ((before.notna()) & (before != df[col])).sum()
+        print(f"  {col}: 按日截面3σ缩尾{n_clip}个极端值")
+
+    # 3. 剔除收益率为NaN的行（停牌日）；保留next_excess_ret为空的末日记录供回测结算
     n_before = len(df)
-    df = df.dropna(subset=['ret', 'next_excess_ret'])
+    df = df.dropna(subset=['ret'])
     print(f"[数据清洗] 剔除停牌日: {n_before} -> {len(df)} 条记录")
 
     # 4. 剔除因子全为NaN的行

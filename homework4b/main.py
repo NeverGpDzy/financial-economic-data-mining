@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from homework4b import config
 from homework4b.data import load_and_preprocess
-from homework4b.factors import run_factor_quality_check
+from homework4b.factors import run_factor_quality_check, standardize_factors
 from homework4b.models import run_model_training
 from homework4b.backtest import run_backtest_pipeline
 from homework4b.plots import generate_all_plots
@@ -38,19 +38,11 @@ def main():
     train_df, test_df, full_df = load_and_preprocess()
 
     # ==================== 模块2+3：因子质检 ====================
-    full_df, ic_dict, ir_df, vif_df, ols_df = run_factor_quality_check(full_df)
+    # 因子IC/IR、VIF和OLS只使用2020-2023训练集，避免把样本外回测期信息写入研究结论。
+    train_df, ic_dict, ir_df, vif_df, ols_df = run_factor_quality_check(train_df)
 
-    # 更新训练集和测试集（添加标准化因子列）
-    std_cols = [f'{c}_std' for c in config.FACTOR_NAMES]
-    train_df = full_df[
-        (full_df['trade_date'] >= config.TRAIN_START) &
-        (full_df['trade_date'] <= config.TRAIN_END)
-    ].copy().reset_index(drop=True)
-
-    test_df = full_df[
-        (full_df['trade_date'] >= config.TEST_START) &
-        (full_df['trade_date'] <= config.TEST_END)
-    ].copy().reset_index(drop=True)
+    # 回测集仅按每日截面做标准化后用于样本外打分，不参与因子筛选和模型训练。
+    test_df = standardize_factors(test_df)
 
     # ==================== 模块4：LGBM模型训练 ====================
     model, importance_df = run_model_training(train_df)

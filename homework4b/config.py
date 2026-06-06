@@ -34,9 +34,8 @@ TEST_END = '2025-12-31'
 # 无风险利率（日频）
 RISK_FREE_RATE_DAILY = 0.0001  # 日0.01%
 
-# 因子名称列表（4大标准因子 + 4个扩展因子）
-FACTOR_NAMES = ['Reversal', 'Liquidity', 'MoneyFlow', 'Value',
-                'Momentum', 'Volatility', 'Turnover', 'VolumeChange']
+# 因子名称列表：严格使用作业要求的4个中频短线因子
+FACTOR_NAMES = ['Reversal', 'Liquidity', 'MoneyFlow', 'Value']
 
 # ==================== 因子质检配置 ====================
 # IC筛选阈值

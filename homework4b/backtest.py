@@ -63,9 +63,8 @@ def run_backtest(scored_df: pd.DataFrame, index_df: pd.DataFrame) -> Tuple[pd.Da
 
     # 初始化
     nav = config.INITIAL_CAPITAL
-    holdings = []           # 当前持仓股票列表
+    holdings = []             # 当前持仓股票列表
     days_since_rebalance = 0  # 距上次调仓的天数
-    first_day = True
 
     # 记录列表
     records = []
@@ -73,16 +72,12 @@ def run_backtest(scored_df: pd.DataFrame, index_df: pd.DataFrame) -> Tuple[pd.Da
 
     for i, date in enumerate(trade_dates):
         daily = scored_df[scored_df['trade_date'] == date].copy()
-        mkt_ret = index_ret_map.get(date, 0.0)
+        # 策略与基准均从首个回测日收盘开始，首日不计入基准前一日涨跌。
+        mkt_ret = 0.0 if i == 0 else index_ret_map.get(date, 0.0)
+        is_last_day = i == n_dates - 1
 
-        if len(daily) < config.TOP_N_STOCKS:
-            records.append({
-                'trade_date': date, 'nav': nav, 'daily_ret': 0.0, 'mkt_ret': mkt_ret
-            })
-            continue
-
-        # ---- 步骤1：计算当日持仓收益 ----
-        if len(holdings) > 0 and not first_day:
+        # ---- 步骤1：计算当日已有持仓收益 ----
+        if holdings:
             # 用当前持仓在今日的收益率
             holdings_ret = []
             for stock in holdings:
@@ -96,23 +91,41 @@ def run_backtest(scored_df: pd.DataFrame, index_df: pd.DataFrame) -> Tuple[pd.Da
         else:
             portfolio_ret = 0.0
 
-        # ---- 步骤2：判断是否调仓 ----
-        need_rebalance = first_day or (days_since_rebalance >= holding_days)
+        net_ret = portfolio_ret
 
-        if need_rebalance and not first_day:
-            # 调仓日：计算换手和交易成本
+        # ---- 步骤2：建仓或调仓 ----
+        if not holdings:
+            if len(daily) >= config.TOP_N_STOCKS:
+                daily_sorted = daily.sort_values('score', ascending=False)
+                holdings = daily_sorted.head(config.TOP_N_STOCKS)['ts_code'].tolist()
+                # 初始建仓只产生买入单边成本。
+                net_ret = -config.COMMISSION_RATE
+                nav = nav * (1 + net_ret)
+                days_since_rebalance = 1
+                trade_log.append({
+                    'trade_date': date,
+                    'holdings': holdings,
+                    'sold': [],
+                    'bought': holdings,
+                    'turnover': 1.0,
+                    'cost': config.COMMISSION_RATE,
+                })
+        elif (days_since_rebalance >= holding_days) and (not is_last_day) and len(daily) >= config.TOP_N_STOCKS:
+            # 调仓日：先结算旧持仓当日收益，再卖出旧持仓、买入新持仓并扣成本。
             daily_sorted = daily.sort_values('score', ascending=False)
             new_holdings = daily_sorted.head(config.TOP_N_STOCKS)['ts_code'].tolist()
 
-            turnover = len(set(new_holdings) - set(holdings)) / config.TOP_N_STOCKS
-            cost = turnover * config.COMMISSION_RATE * 2
+            sold = list(set(holdings) - set(new_holdings))
+            bought = list(set(new_holdings) - set(holdings))
+            turnover = len(bought) / config.TOP_N_STOCKS
+            cost = (len(sold) + len(bought)) / config.TOP_N_STOCKS * config.COMMISSION_RATE
 
             # 记录交易日志
             trade_log.append({
                 'trade_date': date,
                 'holdings': new_holdings,
-                'sold': list(set(holdings) - set(new_holdings)),
-                'bought': list(set(new_holdings) - set(holdings)),
+                'sold': sold,
+                'bought': bought,
                 'turnover': turnover,
                 'cost': cost,
             })
@@ -124,17 +137,8 @@ def run_backtest(scored_df: pd.DataFrame, index_df: pd.DataFrame) -> Tuple[pd.Da
             holdings = new_holdings
             days_since_rebalance = 1
 
-        elif first_day:
-            # 第一天：选股票但不计算收益
-            daily_sorted = daily.sort_values('score', ascending=False)
-            holdings = daily_sorted.head(config.TOP_N_STOCKS)['ts_code'].tolist()
-            days_since_rebalance = 1
-            net_ret = 0.0
-            first_day = False
-
         else:
-            # 非调仓日：继续持有，无交易成本
-            net_ret = portfolio_ret
+            # 非调仓日或最后一个交易日：继续持有，无交易成本
             nav = nav * (1 + net_ret)
             days_since_rebalance += 1
 
@@ -166,11 +170,9 @@ def compute_performance_metrics(backtest_df: pd.DataFrame) -> Dict:
     """
     print("\n[绩效指标] 计算回测核心指标...")
 
-    # 排除第一天（无收益）
-    df = backtest_df[backtest_df['daily_ret'] != 0].copy()
+    df = backtest_df.copy()
     daily_ret = df['daily_ret']
     nav = df['nav']
-    mkt_ret = df['mkt_ret']
 
     n_days = len(daily_ret)
     n_years = n_days / 252

@@ -59,15 +59,15 @@ def train_lgbm_with_cv(X: pd.DataFrame, y: pd.Series,
     print("\n[LGBM训练] 开始时间序列交叉验证...")
 
     # 按时间排序
-    sorted_idx = dates.argsort()
+    sorted_idx = np.argsort(dates.values)
     X = X.iloc[sorted_idx].reset_index(drop=True)
     y = y.iloc[sorted_idx].reset_index(drop=True)
     dates = dates.iloc[sorted_idx].reset_index(drop=True)
 
-    # 时间序列K折分割
+    # 时间序列K折分割：6个时间块生成5个扩展窗口验证
     unique_dates = sorted(dates.unique())
     n_dates = len(unique_dates)
-    fold_size = n_dates // config.LGBM_K_FOLD
+    date_blocks = np.array_split(np.array(unique_dates), config.LGBM_K_FOLD + 1)
 
     cv_results = {
         'train_mse': [],
@@ -78,15 +78,9 @@ def train_lgbm_with_cv(X: pd.DataFrame, y: pd.Series,
     models = []
 
     for fold in range(config.LGBM_K_FOLD):
-        # 时间序列分割：前N折为训练，后1折为验证
-        val_start_idx = fold * fold_size
-        val_end_idx = min((fold + 1) * fold_size, n_dates)
-
-        val_dates = set(unique_dates[val_start_idx:val_end_idx])
-        train_dates = set(unique_dates[:val_start_idx])
-
-        if len(train_dates) == 0:
-            continue
+        # 第1折用第0块训练、第1块验证；之后逐步扩展训练窗口
+        train_dates = set(np.concatenate(date_blocks[:fold + 1]))
+        val_dates = set(date_blocks[fold + 1])
 
         train_mask = dates.isin(train_dates)
         val_mask = dates.isin(val_dates)
@@ -132,6 +126,9 @@ def train_lgbm_with_cv(X: pd.DataFrame, y: pd.Series,
               f"迭代次数={model.best_iteration}")
 
     # 选择验证MSE最低的模型
+    if not models:
+        raise RuntimeError(f"时间序列CV失败：{n_dates}个交易日不足以生成有效训练/验证集")
+
     best_fold = np.argmin(cv_results['val_mse'])
     best_model = models[best_fold]
     best_fold_num = cv_results['fold'][best_fold]
