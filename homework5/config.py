@@ -1,0 +1,41 @@
+"""Configuration for Homework 5 alpha persistence analysis."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = ROOT / "data" / "homework5"
+RAW_DIR = DATA_DIR / "raw"
+ORIGINAL_DIR = DATA_DIR / "original"
+OUTPUT_DIR = ROOT / "outputs" / "homework5"
+
+STOCK_PRICE_CSV = RAW_DIR / "上证50_日度行情_2019_2025.csv"
+STOCK_PRICE_ZIP = ORIGINAL_DIR / "上证50_日度行情_2019_2025.zip"
+MARKET_CACHE_CSV = RAW_DIR / "沪深300指数_2019_2024.csv"
+MARKET_META_JSON = RAW_DIR / "沪深300指数_2019_2024.meta.json"
+
+TRAIN_START = "2019-01-01"
+TRAIN_END = "2021-12-31"
+
+PRIMARY_TEST_LABEL = "2022-2024"
+PRIMARY_TEST_START = "2022-01-01"
+PRIMARY_TEST_END = "2024-12-31"
+
+ROBUST_TEST_LABEL = "2022-2023"
+ROBUST_TEST_START = "2022-01-01"
+ROBUST_TEST_END = "2023-12-31"
+
+RISK_FREE_ANNUAL = 0.015
+TRADING_DAYS = 252
+RISK_FREE_DAILY = RISK_FREE_ANNUAL / TRADING_DAYS
+
+TOP_N = 20
+MIN_OBS = 120
+
+STUDENT_NAME = "丁致宇"
+STUDENT_ID = "202331060205"
+MARKET_NAME = "沪深300"
+MARKET_EASTMONEY_SECID = "1.000300"
+MARKET_BAOSTOCK_CODE = "sh.000300"

@@ -49,6 +49,19 @@ outputs/homework4b/**
 !outputs/homework4b/**/*.md
 !outputs/homework4b/**/*.docx
 
+# Homework 5 final submission materials
+!outputs/homework5/
+outputs/homework5/**
+!outputs/homework5/**/
+!outputs/homework5/**/*.csv
+!outputs/homework5/**/*.png
+!outputs/homework5/**/*.json
+!outputs/homework5/**/*.pptx
+!outputs/homework5/**/*.pdf
+!outputs/homework5/**/*.md
+outputs/homework5/ppt_preview*/
+outputs/homework5/ppt_preview_contact.jpg
+
 # Credentials & secrets
 .env
 credentials.json
@@ -62,6 +75,8 @@ credentials.json
 *.pptx
 !outputs/homework4b/**/*.pptx
 !outputs/homework4b/**/*.pdf
+!outputs/homework5/**/*.pptx
+!outputs/homework5/**/*.pdf
 
 # OS
 .DS_Store

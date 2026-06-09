@@ -1,0 +1,91 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "train_period": {
+    "label": "2019-2021",
+    "start": "2019-01-01",
+    "end": "2021-12-31"
+  },
+  "primary_test_period": {
+    "label": "2022-2024",
+    "start": "2022-01-01",
+    "end": "2024-12-31"
+  },
+  "robust_test_period": {
+    "label": "2022-2023",
+    "start": "2022-01-01",
+    "end": "2023-12-31"
+  },
+  "risk_free_annual": 0.015,
+  "risk_free_daily": 5.9523809523809524e-05,
+  "data_audit": {
+    "stock_rows": 87800,
+    "stock_count": 50,
+    "stock_date_min": "2019-01-02",
+    "stock_date_max": "2026-04-16",
+    "stock_obs_min": 1494,
+    "stock_obs_median": 1766.0,
+    "stock_obs_max": 1766,
+    "market_source": "baostock沪深300（本地缓存）",
+    "market_rows": 1455,
+    "market_date_min": "2019-01-03",
+    "market_date_max": "2024-12-31",
+    "generated_at": "2026-06-09 15:59:00"
+  },
+  "period_results": {
+    "2022-2024": {
+      "test_label": "2022-2024",
+      "stock_count": 50,
+      "top_n": 20,
+      "overlap_count": 3,
+      "overlap_ratio": 0.15,
+      "train_top_alpha_mean": 0.2803746576954594,
+      "train_top_future_alpha_mean": -0.027178641274612735,
+      "future_all_alpha_mean": 0.07224887075021293,
+      "future_top_alpha_mean": 0.21800500129224537,
+      "alpha_mean_change": -0.3075532989700721,
+      "alpha_trend": "下降",
+      "pearson_corr": -0.6550011113781028,
+      "spearman_corr": -0.6428331332533013,
+      "top20_future_excess_vs_all": -0.09942751202482566,
+      "top20_retention_codes": [
+        "sh.601899",
+        "sh.600900",
+        "sh.601088"
+      ]
+    },
+    "2022-2023": {
+      "test_label": "2022-2023",
+      "stock_count": 50,
+      "top_n": 20,
+      "overlap_count": 3,
+      "overlap_ratio": 0.15,
+      "train_top_alpha_mean": 0.2803746576954594,
+      "train_top_future_alpha_mean": -0.027793630464984048,
+      "future_all_alpha_mean": 0.060942867754318446,
+      "future_top_alpha_mean": 0.21074508044901807,
+      "alpha_mean_change": -0.30816828816044345,
+      "alpha_trend": "下降",
+      "pearson_corr": -0.5809367167504579,
+      "spearman_corr": -0.5887635054021607,
+      "top20_future_excess_vs_all": -0.08873649821930249,
+      "top20_retention_codes": [
+        "sh.601899",
+        "sh.600519",
+        "sh.601088"
+      ]
+    }
+  },
+  "plot_paths": {
+    "scatter_2022_2024": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\alpha_scatter_2022_2024.png",
+    "top20_2022_2024": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\top20_alpha_compare_2022_2024.png",
+    "overlap_2022_2024": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\overlap_2022_2024.png",
+    "group_2022_2024": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\group_persistence_2022_2024.png",
+    "scatter_2022_2023": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\alpha_scatter_2022_2023.png",
+    "top20_2022_2023": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\top20_alpha_compare_2022_2023.png",
+    "overlap_2022_2023": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\overlap_2022_2023.png",
+    "group_2022_2023": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework5\\group_persistence_2022_2023.png"
+  }
+}
