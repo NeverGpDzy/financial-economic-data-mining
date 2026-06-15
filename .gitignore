@@ -26,6 +26,9 @@ data/**/*.csv
 data/**/*.pkl
 !data/**/.gitkeep
 
+# Homework 6 extracted data is reproducible from data/homework6/original/*.zip
+data/homework6/raw/**
+
 # Model outputs (except homework4b which needs to be submitted)
 outputs/**/*.csv
 outputs/**/*.pkl
@@ -62,6 +65,18 @@ outputs/homework5/**
 outputs/homework5/ppt_preview*/
 outputs/homework5/ppt_preview_contact.jpg
 
+# Homework 6 final submission materials
+!outputs/homework6/
+outputs/homework6/**
+!outputs/homework6/**/
+!outputs/homework6/**/*.csv
+!outputs/homework6/**/*.png
+!outputs/homework6/**/*.json
+!outputs/homework6/**/*.pptx
+!outputs/homework6/**/*.pdf
+!outputs/homework6/**/*.md
+!outputs/homework6/**/*.docx
+
 # Credentials & secrets
 .env
 credentials.json
@@ -77,6 +92,8 @@ credentials.json
 !outputs/homework4b/**/*.pdf
 !outputs/homework5/**/*.pptx
 !outputs/homework5/**/*.pdf
+!outputs/homework6/**/*.pptx
+!outputs/homework6/**/*.pdf
 
 # OS
 .DS_Store

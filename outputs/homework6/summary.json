@@ -1,0 +1,172 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "data_audit": {
+    "raw_data_dir": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\data\\homework6\\raw\\作业6 配套数据\\data",
+    "merged_rows": 104125,
+    "stock_count": 73,
+    "panel_rows": 803,
+    "panel_year_min": 2014,
+    "panel_year_max": 2024,
+    "trade_date_min": "2014-03-31",
+    "trade_date_max": "2024-12-31",
+    "assignment_period_note": "题目正文写2006-2025；教师提供文件实际覆盖2014-03-31至2024-12-31，本次结果按2014-2024可复现口径完成。"
+  },
+  "train_years": [
+    2014,
+    2017
+  ],
+  "model_train_end_year": 2016,
+  "test_years": [
+    2018,
+    2024
+  ],
+  "model_features": [
+    "F1_profit_cagr_z",
+    "F2_gross_margin_z",
+    "F3_net_margin_z",
+    "F4_light_asset_z",
+    "F5_low_debt_z",
+    "F6_roe_z",
+    "F7_low_expense_z",
+    "F8_ocf_profit_z",
+    "F9_dividend_payout_z",
+    "F10_dividend_yield_z",
+    "F11_fcff_yield_z"
+  ],
+  "plot_paths": {
+    "factor_ic_ir": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\factor_ic_ir.png",
+    "feature_importance": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\feature_importance.png",
+    "fcff_group_backtest": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\fcff_group_backtest.png",
+    "price_nav_comparison": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\price_nav_comparison.png",
+    "annual_returns_A_group": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\annual_returns_A_group.png",
+    "top_group_radar": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\top_group_radar.png",
+    "price_metrics_table": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework6\\price_metrics_table.png"
+  },
+  "top_ic_factors": [
+    {
+      "factor": "F2_gross_margin",
+      "因子": "F2 销售毛利率",
+      "IC均值": 0.09961630727038694,
+      "IC标准差": 0.08478552009348822,
+      "IR": 1.1749212252640961,
+      "年度截面数": 3,
+      "IC有效": true,
+      "IR达标": true
+    },
+    {
+      "factor": "F10_dividend_yield",
+      "因子": "F10 股息率",
+      "IC均值": 0.06841064558086139,
+      "IC标准差": 0.16822120405919141,
+      "IR": 0.4066707637886297,
+      "年度截面数": 3,
+      "IC有效": true,
+      "IR达标": true
+    },
+    {
+      "factor": "F4_light_asset",
+      "因子": "F4 固资/总资产",
+      "IC均值": 0.053981610120769824,
+      "IC标准差": 0.20251635603952428,
+      "IR": 0.2665543225732297,
+      "年度截面数": 3,
+      "IC有效": true,
+      "IR达标": true
+    },
+    {
+      "factor": "F9_dividend_payout",
+      "因子": "F9 分红率",
+      "IC均值": 0.05319035574348661,
+      "IC标准差": 0.0836500288849018,
+      "IR": 0.6358677503039128,
+      "年度截面数": 3,
+      "IC有效": true,
+      "IR达标": true
+    },
+    {
+      "factor": "F3_net_margin",
+      "因子": "F3 销售净利率",
+      "IC均值": 0.022992750616119873,
+      "IC标准差": 0.12055268623277612,
+      "IR": 0.19072781632298272,
+      "年度截面数": 3,
+      "IC有效": true,
+      "IR达标": true
+    }
+  ],
+  "top_importance": [
+    {
+      "feature": "F5_low_debt_z",
+      "factor": "F5_low_debt",
+      "gain_importance": 170620.36320114136,
+      "split_importance": 104,
+      "importance_share": 0.4359122567888287,
+      "因子": "F5 资产负债率"
+    },
+    {
+      "feature": "F7_low_expense_z",
+      "factor": "F7_low_expense",
+      "gain_importance": 117808.41032028198,
+      "split_importance": 112,
+      "importance_share": 0.3009847655222605,
+      "因子": "F7 三费费率/营收"
+    },
+    {
+      "feature": "F8_ocf_profit_z",
+      "factor": "F8_ocf_profit",
+      "gain_importance": 46664.91936302185,
+      "split_importance": 65,
+      "importance_share": 0.11922264101866295,
+      "因子": "F8 经营现金流净额/净利润"
+    },
+    {
+      "feature": "F11_fcff_yield_z",
+      "factor": "F11_fcff_yield",
+      "gain_importance": 20525.90341949463,
+      "split_importance": 22,
+      "importance_share": 0.052440943826109414,
+      "因子": "F11 FCFF收益率"
+    },
+    {
+      "feature": "F4_light_asset_z",
+      "factor": "F4_light_asset",
+      "gain_importance": 13228.093399047852,
+      "split_importance": 17,
+      "importance_share": 0.033796013197994315,
+      "因子": "F4 固资/总资产"
+    }
+  ],
+  "price_metrics_A_group": [
+    {
+      "scheme": "方案A_传统规则",
+      "group": "A",
+      "period": "2018-2024",
+      "交易日数": 1699,
+      "累计收益率": 0.8485028168937696,
+      "年化收益率": 0.09540681402411044,
+      "基准累计收益率": -0.02380707128637205,
+      "基准年化收益率": -0.003567458929789158,
+      "超额收益": 0.8723098881801417,
+      "最大回撤": -0.2608371261133249,
+      "年化波动率": 0.1865894701291889,
+      "夏普比率": 0.5817792960394886
+    },
+    {
+      "scheme": "方案B_LGBM打分",
+      "group": "A",
+      "period": "2018-2024",
+      "交易日数": 1699,
+      "累计收益率": 0.5768391555422381,
+      "年化收益率": 0.06988310499250572,
+      "基准累计收益率": -0.02380707128637205,
+      "基准年化收益率": -0.003567458929789158,
+      "超额收益": 0.6006462268286101,
+      "最大回撤": -0.2876203912267089,
+      "年化波动率": 0.17988653085789755,
+      "夏普比率": 0.4654591607932799
+    }
+  ]
+}
