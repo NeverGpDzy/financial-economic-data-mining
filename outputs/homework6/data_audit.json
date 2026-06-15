@@ -1,11 +1,13 @@
 {
   "raw_data_dir": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\data\\homework6\\raw\\作业6 配套数据\\data",
   "merged_rows": 104125,
-  "stock_count": 73,
-  "panel_rows": 803,
+  "panel_rows_before_component_filter": 803,
+  "stock_count": 66,
+  "panel_rows": 446,
   "panel_year_min": 2014,
   "panel_year_max": 2024,
   "trade_date_min": "2014-03-31",
   "trade_date_max": "2024-12-31",
-  "assignment_period_note": "题目正文写2006-2025；教师提供文件实际覆盖2014-03-31至2024-12-31，本次结果按2014-2024可复现口径完成。"
+  "assignment_period_note": "题目正文写2006-2025；教师提供文件实际覆盖2014-03-31至2024-12-31，本次结果按2014-2024可复现口径完成。",
+  "component_filter_note": "年度因子面板仅保留对应财年12月31日仍属于上证50动态成分且存在年末行情快照的股票。"
 }

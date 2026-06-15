@@ -82,10 +82,10 @@ def add_card(slide, x, y, w, h, title, body, accent="1B7F5A"):
     add_text(slide, body, x + 0.18, y + 0.58, w - 0.36, h - 0.72, size=10.8, color=COLORS["ink"])
 
 
-def add_stat(slide, label, value, x, y, w, accent="1B7F5A", label_color=None):
+def add_stat(slide, label, value, x, y, w, accent="1B7F5A", label_color=None, value_size=27):
     if label_color is None:
         label_color = COLORS["slate"]
-    add_text(slide, value, x, y, w, 0.52, size=27, bold=True, color=accent, align=PP_ALIGN.CENTER)
+    add_text(slide, value, x, y, w, 0.52, size=value_size, bold=True, color=accent, align=PP_ALIGN.CENTER)
     add_text(slide, label, x, y + 0.56, w, 0.32, size=10.2, color=label_color, align=PP_ALIGN.CENTER)
 
 
@@ -177,12 +177,13 @@ def build() -> None:
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(slide, "数据口径", "按教师提供文件可复现执行，并显式说明与题目年份的差异。")
     audit = summary["data_audit"]
-    add_stat(slide, "实际行情区间", f"{audit['trade_date_min']} ~ {audit['trade_date_max']}", 0.8, 1.4, 4.0, COLORS["forest"])
-    add_stat(slide, "年度财务截面", f"{audit['panel_year_min']}-{audit['panel_year_max']}", 5.05, 1.4, 2.4, COLORS["gold"])
+    date_range = f"{audit['trade_date_min'].replace('-', '.')}-{audit['trade_date_max'].replace('-', '.')}"
+    add_stat(slide, "实际行情区间", date_range, 0.65, 1.4, 4.45, COLORS["forest"], value_size=22)
+    add_stat(slide, "年度财务截面", f"{audit['panel_year_min']}-{audit['panel_year_max']}", 5.25, 1.4, 2.15, COLORS["gold"])
     add_stat(slide, "年度面板行数", str(audit["panel_rows"]), 7.9, 1.4, 1.8, COLORS["moss"])
     add_stat(slide, "股票数", str(audit["stock_count"]), 10.1, 1.4, 1.6, COLORS["brick"])
-    add_card(slide, 0.95, 3.85, 5.4, 1.55, "防未来泄露", "未来1年FCFF标签用于训练，因此模型训练标签截至2016；2017只作为2018持仓打分起点。", COLORS["brick"])
-    add_card(slide, 6.85, 3.85, 5.3, 1.55, "样本外范围", "价格回测覆盖2018-2024；未来3年FCFF标签因数据截止2024，只能验证到2021年截面。", COLORS["forest"])
+    add_card(slide, 0.95, 3.7, 5.4, 1.75, "动态成分与防泄露", "年度面板只保留财年12月31日仍在上证50且有行情快照的股票；LGBM训练标签截至2016。", COLORS["brick"])
+    add_card(slide, 6.85, 3.7, 5.3, 1.75, "样本外范围", "价格回测覆盖2018-2024，并使用滞后2年的已披露年报得分；3年FCFF标签验证到2021截面。", COLORS["forest"])
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(slide, "整体流程", "数据加载 → 因子质检 → LGBM打分 → 双策略分组 → FCFF与股价回测。")
@@ -215,10 +216,10 @@ def build() -> None:
     add_card(slide, 7.85, 3.35, 4.6, 1.65, "控参", "max_depth=3，num_leaves=7，min_data_in_leaf=5，L2正则控制过拟合。", COLORS["brick"])
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_title(slide, "两套选股方案", "同一年度截面，同一A/B/C分组，后续FCFF和股价回测使用完全一致的分组股票。")
-    add_card(slide, 0.9, 1.3, 5.3, 2.1, "方案A：固定阈值传统规则", "净利润正增长、净利率为正、轻资产、低负债、ROE质量、费用控制、现金流质量、分红与FCFF为正。", COLORS["forest"])
+    add_title(slide, "两套选股方案", "同一年度截面，同一A/B/C分组；价格回测按年报披露可得性使用滞后2年得分。")
+    add_card(slide, 0.9, 1.3, 5.3, 2.1, "方案A：固定阈值硬筛", "A组必须全部通过净利润增长、净利率、轻资产、低负债、ROE、费用、现金流、分红、股息率和FCFF阈值；B/C为未通过股票的对照分层。", COLORS["forest"])
     add_card(slide, 6.95, 1.3, 5.25, 2.1, "方案B：LGBM综合打分", "使用过VIF质检的标准化因子预测未来1年FCFF增速，分数越高表示中长期价值预期越好。", COLORS["brick"])
-    add_card(slide, 0.9, 4.35, 11.3, 1.25, "统一回测规则", "年末截面打分，下一年等权持有；初始资金100万，单边手续费0.1%，基准为沪深300。", COLORS["gold"])
+    add_card(slide, 0.9, 4.35, 11.3, 1.25, "统一回测规则", "2018持仓使用2016财年得分，之后逐年滚动；等权持有，初始资金100万，单边手续费0.1%，基准为沪深300。", COLORS["gold"])
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_title(slide, "FCFF分层回测", "检验A组真实未来3年FCFF年化增速是否高于B、C组。")

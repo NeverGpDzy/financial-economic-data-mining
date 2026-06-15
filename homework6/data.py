@@ -31,6 +31,37 @@ def _parse_date(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series.astype(str), errors="coerce")
 
 
+def _component_dates(components: pd.DataFrame) -> pd.DataFrame:
+    comp = components.copy()
+    comp["in_date_dt"] = pd.to_datetime(
+        pd.to_numeric(comp["in_date"], errors="coerce").astype("Int64").astype(str),
+        format="%Y%m%d",
+        errors="coerce",
+    )
+    out_date = pd.to_numeric(comp["out_date"], errors="coerce")
+    comp["out_date_dt"] = pd.to_datetime(
+        out_date.where(out_date < 90000000).astype("Int64").astype(str).replace("<NA>", pd.NA),
+        format="%Y%m%d",
+        errors="coerce",
+    )
+    return comp[["ts_code", "in_date_dt", "out_date_dt"]]
+
+
+def _mark_year_end_components(panel: pd.DataFrame, components: pd.DataFrame) -> pd.DataFrame:
+    df = panel.copy()
+    comp = _component_dates(components)
+    df["rebalance_date"] = pd.to_datetime(df["year"].astype(str) + "-12-31")
+    df["in_sz50_year_end"] = False
+    for year in sorted(df["year"].dropna().unique()):
+        year_end = pd.Timestamp(int(year), 12, 31)
+        active = comp[
+            (comp["in_date_dt"] <= year_end)
+            & (comp["out_date_dt"].isna() | (comp["out_date_dt"] > year_end))
+        ]["ts_code"]
+        df.loc[df["year"].eq(year) & df["ts_code"].isin(active), "in_sz50_year_end"] = True
+    return df
+
+
 def load_raw_tables() -> dict[str, pd.DataFrame]:
     ensure_raw_data()
     root = config.RAW_ROOT
@@ -172,6 +203,12 @@ def build_annual_panel(tables: dict[str, pd.DataFrame] | None = None) -> pd.Data
     ]:
         panel[col] = pd.to_numeric(panel[col], errors="coerce").replace([np.inf, -np.inf], np.nan)
 
+    pre_filter_rows = len(panel)
+    panel = _mark_year_end_components(panel, tables["components"])
+    panel = panel[panel["in_sz50_year_end"] & panel["adj_close"].notna()].copy()
+    panel.attrs["pre_component_filter_rows"] = pre_filter_rows
+    panel.attrs["post_component_filter_rows"] = len(panel)
+
     return panel
 
 
@@ -198,6 +235,7 @@ def data_audit(panel: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> dict:
     audit = {
         "raw_data_dir": str(config.RAW_ROOT),
         "merged_rows": int(len(merged)),
+        "panel_rows_before_component_filter": int(panel.attrs.get("pre_component_filter_rows", len(panel))),
         "stock_count": int(panel["ts_code"].nunique()),
         "panel_rows": int(len(panel)),
         "panel_year_min": int(panel["year"].min()),
@@ -207,6 +245,9 @@ def data_audit(panel: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> dict:
         "assignment_period_note": (
             "题目正文写2006-2025；教师提供文件实际覆盖2014-03-31至2024-12-31，"
             "本次结果按2014-2024可复现口径完成。"
+        ),
+        "component_filter_note": (
+            "年度因子面板仅保留对应财年12月31日仍属于上证50动态成分且存在年末行情快照的股票。"
         ),
     }
     return audit
@@ -235,8 +276,10 @@ def save_data_description(audit: dict) -> None:
 
 - 实际行情日期：{audit['trade_date_min']} 至 {audit['trade_date_max']}。
 - 年度财务截面：{audit['panel_year_min']} 至 {audit['panel_year_max']}。
+- 成分股筛选前年度行数：{audit['panel_rows_before_component_filter']}。
 - 股票数：{audit['stock_count']}。
 - 说明：{audit['assignment_period_note']}
+- 成分股口径：{audit['component_filter_note']}
 """
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     (config.DATA_DIR / "数据说明.md").write_text(text, encoding="utf-8")

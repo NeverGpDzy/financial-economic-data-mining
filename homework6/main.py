@@ -65,9 +65,9 @@ def write_ai_records() -> None:
 
 ## 任务1：数据加载、因子计算与预处理
 
-AI指令：读取上证50成分股年度/季度财务数据、分红数据、复权日行情和沪深300指数，按年度截面计算F1-F11价值财务因子、FCFF及未来1年/3年FCFF标签；反向因子做正向化，按年度截面3σ缩尾、缺失值中位数填充并Z标准化；输出训练集和测试集。
+AI指令：读取上证50成分股年度/季度财务数据、分红数据、复权日行情、上证50动态成分和沪深300指数，按年度截面计算F1-F11价值财务因子、FCFF及未来1年/3年FCFF标签；反向因子做正向化，按年度截面3σ缩尾、缺失值中位数填充并Z标准化；输出训练集和测试集。
 
-人工修改：发现教师文件实际覆盖2014-2024，因此将可复现口径改为2014-2017训练、2018-2024样本外；模型训练标签只使用2014-2016，避免2018标签泄露；FCFF增速受接近0分母影响较大，对标签也按年度截面做3σ缩尾，保留原始标签字段备查。
+人工修改：发现教师文件实际覆盖2014-2024，因此将可复现口径改为2014-2017训练、2018-2024样本外；年度面板只保留对应财年12月31日仍属于上证50动态成分且存在行情快照的股票；模型训练标签只使用2014-2016，避免2018标签泄露；FCFF增速受接近0分母影响较大，对标签也按年度截面做3σ缩尾，保留原始标签字段备查。
 
 ## 任务2：IC/IR与VIF因子质检
 
@@ -91,18 +91,21 @@ AI指令：使用过VIF质检的标准化因子训练LightGBM回归模型，标�
 
 AI指令：构建方案A固定阈值传统价值规则和方案B LGBM价值得分，按年度截面分为A/B/C三组；统计未来3年FCFF年化增速分层结果，并用同一分组做年调仓等权股价回测，初始资金100万、单边手续费0.1%、基准沪深300。
 
-人工修改：价格回测使用上一年得分持有下一年，严格年度调仓；样本外股价回测截止到2024，3年FCFF标签截止到2021。
+人工修改：方案A的A组改为全部通过固定财务阈值的硬筛组合，未通过股票再按传统规则得分分入B/C对照组；F10股息率字段按小数比例处理，0.5%阈值写为0.005；年度价格回测使用已披露年报口径，2018持仓使用2016财年得分、之后逐年滚动，避免在年初使用尚未披露的上一财年年报；样本外股价回测截止到2024，3年FCFF标签截止到2021。
 """
     audit = """# 作业6 AI代码审查与修复表
 
 | 编号 | 严重性 | 审查发现 | 影响 | 修复动作 | 验证方式 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 高 | 题目写2006-2025，但教师数据实际只有2014-2024。 | 直接照题目年份会生成空样本或虚假结果。 | 按原始文件日期改为2014-2017训练、2018-2024样本外，并在报告说明口径差异。 | `data_audit.json` 记录实际日期范围。 | 已修复 |
-| 2 | 高 | 未来1年FCFF标签会让2017样本使用2018信息。 | 如果用2017标签训练再回测2018，会产生样本外泄露。 | LGBM训练标签截至2016，2017只作为2018持仓打分起点。 | `summary.json` 写明 `model_train_end_year=2016`。 | 已修复 |
+| 2 | 高 | 未来1年FCFF标签会让2017样本使用2018信息。 | 如果用2017标签训练再回测2018，会产生样本外泄露。 | LGBM训练标签截至2016，只使用2014-2016带标签样本训练模型。 | `summary.json` 写明 `model_train_end_year=2016`。 | 已修复 |
 | 3 | 中 | F4固资/总资产没有直接总资产字段。 | 因子无法按原定义直接计算。 | 用 `bps * total_share * assets_to_eqt` 估计总资产，保留公式说明。 | `annual_factor_panel.csv` 输出F4结果。 | 已修复 |
 | 4 | 中 | 评分标准提到11个因子，但正文列F1-F10。 | 交付可能被认为少一个长期现金流因子。 | 在F10股息率后补充F11 FCFF收益率，并在报告解释该补充。 | `factor_quality_summary.csv` 包含F1-F11。 | 已修复 |
 | 5 | 中 | 小样本LightGBM容易过拟合。 | 训练误差好但样本外分层失真。 | 限制 `max_depth=3`、`num_leaves=7`、`min_data_in_leaf=5` 并使用时间序列CV。 | `lgbm_cv_results.csv` 输出验证MSE。 | 已修复 |
 | 6 | 中 | FCFF增速在FCFF接近0或由负转正时存在极端值。 | IC、OLS和LGBM会被少数异常标签主导。 | 新增 `target_fcff_growth_1y` 和 `target_fcff_growth_3y_ann`，按年度截面3σ缩尾后用于检验、训练和分层统计，原始标签保留。 | `annual_factor_panel.csv` 同时包含原始标签和缩尾标签。 | 已修复 |
+| 7 | 高 | 年度面板未按当年年末上证50动态成分收口。 | 已退出或尚未进入上证50的股票会进入当年截面，扩大样本池。 | 按 `sz50_dynamic_components.csv` 保留财年12月31日仍在上证50且有年末行情的股票。 | `data_audit.json` 记录筛选前后行数，`annual_factor_panel.csv` 保留 `in_sz50_year_end`。 | 已修复 |
+| 8 | 高 | 价格回测在年初使用上一财年年报得分，存在年报尚未披露的信息泄露。 | 2018年初无法知道2017年报完整财务指标。 | 价格回测使用两年滞后年度得分，例如2018持仓使用2016财年得分。 | `price_annual_returns.csv` 输出 `score_lag_years=2`，且 `hold_year-score_year=2`。 | 已修复 |
+| 9 | 高 | 方案A原先按传统规则得分三等分，不是固定阈值硬筛。 | A组可能包含未通过关键阈值的股票，偏离作业要求。 | 方案A A组必须全部通过固定财务阈值；未通过股票按得分分入B/C对照组。 | `strategy_yearly_groups.csv` 输出 `traditional_hard_pass` 和 `grouping_method`。 | 已修复 |
 """
     (config.OUTPUT_DIR / "AI交互记录.md").write_text(interaction, encoding="utf-8")
     (config.OUTPUT_DIR / "AI代码审查与修复表.md").write_text(audit, encoding="utf-8")
@@ -128,16 +131,18 @@ def write_report(summary: dict, ic_ir: pd.DataFrame, importance: pd.DataFrame, f
         "本作业将巴菲特-芒格“三好价值投资”拆解为财务价值因子，并按因子预处理、IC/IR、VIF、单因子OLS、LGBM非线性赋权、双策略回测的全链路完成实证。两套方案分别是：方案A固定阈值传统价值规则，方案B基于LGBM的财务因子综合打分。",
         "",
         f"题目正文写明数据范围为2006-2025，但教师提供文件实际覆盖 {summary['data_audit']['trade_date_min']} 至 {summary['data_audit']['trade_date_max']}。因此本报告采用可复现口径：{config.TRAIN_START_YEAR}-{config.TRAIN_END_YEAR}为训练研究窗口，{config.TEST_START_YEAR}-{config.TEST_END_YEAR}为样本外价格回测窗口；未来3年FCFF标签因数据截止2024，样本外可验证到{config.FCFF_3Y_TEST_END_YEAR}年截面。",
+        f"年度股票池按上证50动态成分收口：只保留对应财年12月31日仍在成分内且存在年末行情快照的股票。价格回测进一步采用已披露年报口径，持有年份使用滞后{config.PRICE_SCORE_LAG_YEARS}年的年度得分，避免在年初使用尚未披露的上一财年年报。",
         "",
         "评分表提到11个财务因子，而正文列到F10。为避免长期现金流维度不足，本次在F10股息率后补充F11 FCFF收益率，所有因子均按年度截面正向化、3σ缩尾和Z标准化。FCFF增速标签容易受接近0分母影响，因此IC、OLS、LGBM和FCFF分层统计使用年度截面3σ缩尾后的标签，同时在面板中保留原始标签备查。",
         "",
         "## 2. 数据与因子",
         "",
-        f"- 年度面板：{summary['data_audit']['panel_rows']}行，{summary['data_audit']['stock_count']}只股票。",
+        f"- 年度面板：{summary['data_audit']['panel_rows']}行，{summary['data_audit']['stock_count']}只股票；成分股筛选前为{summary['data_audit']['panel_rows_before_component_filter']}行。",
         "- 标签Y：未来1年FCFF增速，年度截面缩尾后用于IC、OLS和LGBM训练。",
         "- FCFF分层回测标签：未来3年FCFF年化增速，年度截面缩尾后统计。",
         "- FCFF计算：经营现金流净额约等于 `ocfps * total_share`，固定资产投入用固定资产正增量代理。",
-        "- 股价回测：上一年年末分组，下一年等权持有，单边手续费0.1%，沪深300为基准。",
+        f"- 方案A：A组为全部通过固定财务阈值的硬筛组合，B/C组为未通过硬筛股票按传统规则得分分层的对照组。",
+        f"- 股价回测：用滞后{config.PRICE_SCORE_LAG_YEARS}年的年报得分形成持仓，年度等权持有，单边手续费0.1%，沪深300为基准。",
         "",
         "## 3. 因子质检结论",
         "",
@@ -290,6 +295,9 @@ def run(build_ppt: bool = False) -> dict:
         "train_years": [config.TRAIN_START_YEAR, config.TRAIN_END_YEAR],
         "model_train_end_year": config.MODEL_TRAIN_END_YEAR,
         "test_years": [config.TEST_START_YEAR, config.TEST_END_YEAR],
+        "price_score_lag_years": config.PRICE_SCORE_LAG_YEARS,
+        "component_filter": audit["component_filter_note"],
+        "traditional_grouping": "方案A A组必须全部通过固定财务阈值；未通过股票再按传统规则得分分入B/C对照组。",
         "model_features": model_features,
         "plot_paths": plot_paths,
         "top_ic_factors": ic_ir.head(5).to_dict(orient="records"),

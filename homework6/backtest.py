@@ -17,6 +17,23 @@ def _assign_groups(one_year: pd.DataFrame, score_col: str) -> pd.Series:
     return result
 
 
+def _assign_traditional_groups(one_year: pd.DataFrame) -> pd.Series:
+    result = pd.Series(index=one_year.index, dtype=object)
+    rule_cols = config.TRADITIONAL_CORE_RULE_COLUMNS
+    hard_pass = one_year[rule_cols].all(axis=1)
+    result.loc[hard_pass] = "A"
+
+    remaining = one_year.loc[~hard_pass].copy()
+    if remaining.empty:
+        return result
+
+    ordered = remaining.sort_values("traditional_score", ascending=False, na_position="last")
+    splits = np.array_split(ordered.index.to_numpy(), 2)
+    for label, idx in zip(["B", "C"], splits):
+        result.loc[idx] = label
+    return result
+
+
 def build_strategy_groups(scored_panel: pd.DataFrame) -> pd.DataFrame:
     rows = []
     schemes = {
@@ -28,7 +45,14 @@ def build_strategy_groups(scored_panel: pd.DataFrame) -> pd.DataFrame:
             valid = group.dropna(subset=[score_col]).copy()
             if len(valid) < 9:
                 continue
-            valid["group"] = _assign_groups(valid, score_col)
+            if scheme == "方案A_传统规则":
+                valid["group"] = _assign_traditional_groups(valid)
+                valid["traditional_hard_pass"] = valid["group"].eq("A")
+                valid["grouping_method"] = "core_hard_filter_then_residual_rank"
+            else:
+                valid["group"] = _assign_groups(valid, score_col)
+                valid["traditional_hard_pass"] = np.nan
+                valid["grouping_method"] = "score_tercile"
             valid["scheme"] = scheme
             valid["score_col"] = score_col
             rows.append(valid)
@@ -143,7 +167,7 @@ def price_group_backtest(
             nav = config.INITIAL_CAPITAL
             prev_set: set[str] | None = None
             for hold_year in range(config.TEST_START_YEAR, config.DATA_END_YEAR + 1):
-                score_year = hold_year - 1
+                score_year = hold_year - config.PRICE_SCORE_LAG_YEARS
                 current = holdings[
                     (holdings["scheme"] == scheme)
                     & (holdings["group"] == group)
@@ -151,13 +175,22 @@ def price_group_backtest(
                 ]["ts_code"].tolist()
                 if not current:
                     continue
-                current_set = set(current)
                 year_days = stock[stock["year"].eq(hold_year)][["trade_date"]].drop_duplicates()
                 if year_days.empty:
                     continue
+                tradable = (
+                    stock[(stock["year"].eq(hold_year)) & (stock["ts_code"].isin(current))]
+                    ["ts_code"]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
+                if not tradable:
+                    continue
+                current_set = set(tradable)
 
                 pivot = (
-                    stock[(stock["year"].eq(hold_year)) & (stock["ts_code"].isin(current))]
+                    stock[(stock["year"].eq(hold_year)) & (stock["ts_code"].isin(tradable))]
                     .pivot_table(index="trade_date", columns="ts_code", values="ret", aggfunc="mean")
                     .reindex(year_days["trade_date"])
                     .fillna(0.0)
@@ -183,7 +216,9 @@ def price_group_backtest(
                             "group": group,
                             "hold_year": hold_year,
                             "score_year": score_year,
+                            "score_lag_years": config.PRICE_SCORE_LAG_YEARS,
                             "holding_count": len(current),
+                            "tradable_holding_count": len(tradable),
                             "daily_ret": net_ret,
                             "nav": nav,
                         }
@@ -194,10 +229,13 @@ def price_group_backtest(
                         "group": group,
                         "hold_year": hold_year,
                         "score_year": score_year,
+                        "score_lag_years": config.PRICE_SCORE_LAG_YEARS,
                         "holding_count": len(current),
+                        "tradable_holding_count": len(tradable),
                         "annual_return": nav / year_start_nav - 1,
                         "turnover_cost": cost,
                         "holdings": ",".join(current),
+                        "tradable_holdings": ",".join(tradable),
                     }
                 )
                 previous_holdings[(scheme, group)] = current_set

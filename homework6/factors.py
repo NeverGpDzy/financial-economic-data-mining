@@ -68,7 +68,7 @@ def add_traditional_scores(panel: pd.DataFrame) -> pd.DataFrame:
     df["rule_expense_control"] = df["F7_low_expense"] < 35
     df["rule_cash_quality"] = df["F8_ocf_profit"] > 50
     df["rule_dividend_positive"] = df["F9_dividend_payout"] > 0.05
-    df["rule_dividend_yield"] = df["F10_dividend_yield"] > 0.5
+    df["rule_dividend_yield"] = df["F10_dividend_yield"] > config.TRADITIONAL_DIVIDEND_YIELD_MIN
     df["rule_fcff_positive"] = df["fcff"] > 0
     rule_cols = list(config.TRADITIONAL_RULES.keys())
     df["traditional_rule_count"] = df[rule_cols].sum(axis=1)

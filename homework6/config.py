@@ -26,6 +26,10 @@ MODEL_TRAIN_END_YEAR = 2016  # labels are t+1, so this avoids using 2018 labels.
 TEST_START_YEAR = 2018
 TEST_END_YEAR = 2024
 FCFF_3Y_TEST_END_YEAR = 2021
+# Annual reports are released after fiscal year-end. A calendar-year price
+# backtest therefore uses the fiscal annual report that was already public at
+# the previous year-end.
+PRICE_SCORE_LAG_YEARS = 2
 
 INITIAL_CAPITAL = 1_000_000.0
 COMMISSION_RATE = 0.001
@@ -108,9 +112,11 @@ TRADITIONAL_RULES = {
     "rule_expense_control": "F7_low_expense < 35",
     "rule_cash_quality": "F8_ocf_profit > 50",
     "rule_dividend_positive": "F9_dividend_payout > 0.05",
-    "rule_dividend_yield": "F10_dividend_yield > 0.5",
+    "rule_dividend_yield": "F10_dividend_yield > 0.005",
     "rule_fcff_positive": "fcff > 0",
 }
+TRADITIONAL_DIVIDEND_YIELD_MIN = 0.005
+TRADITIONAL_CORE_RULE_COLUMNS = list(TRADITIONAL_RULES.keys())
 
 LGBM_PARAMS = {
     "objective": "regression",
