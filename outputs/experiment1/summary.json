@@ -1,0 +1,37 @@
+{
+  "audit": {
+    "raw_news_rows": 60000,
+    "rows_after_date_and_non_null_filter": 36181,
+    "duplicate_content_removed": 1705,
+    "labeled_trading_day_rows": 30623,
+    "non_trading_or_out_of_calendar_removed": 3853,
+    "date_start": "2014-10-08",
+    "date_end": "2015-10-21"
+  },
+  "weekly_rows": 51,
+  "modeling_rows": 51,
+  "best_lag": 3,
+  "correlation_h3_return": -0.026510433995579168,
+  "regression": {
+    "best_lag": 3,
+    "intercept": 0.017855254451344185,
+    "beta": -0.04634078238342675,
+    "r_squared": 0.023766549983148977,
+    "p_value_beta": 0.29547060769541267,
+    "n_obs": 48,
+    "equation": "return_t = 0.017855 + -0.046341 * H3t_lag3"
+  },
+  "adf": {
+    "adf_statistic": -5.868273027121531,
+    "p_value": 3.2860464679663706e-07,
+    "used_lag": 0,
+    "n_obs": 47,
+    "is_residual_stationary_5pct": true
+  },
+  "plots": [
+    "outputs\\experiment1\\weekly_sentiment_counts.png",
+    "outputs\\experiment1\\herd_index_timeseries.png",
+    "outputs\\experiment1\\herd_vs_hs300_return.png",
+    "outputs\\experiment1\\lag_regression_scatter.png"
+  ]
+}

@@ -29,6 +29,16 @@ data/**/*.pkl
 # Homework 6 extracted data is reproducible from data/homework6/original/*.zip
 data/homework6/raw/**
 
+# Experiment 1 final materials
+!outputs/experiment1/
+outputs/experiment1/**
+!outputs/experiment1/**/
+!outputs/experiment1/**/*.csv
+!outputs/experiment1/**/*.png
+!outputs/experiment1/**/*.json
+!outputs/experiment1/**/*.md
+!outputs/experiment1/**/*.db
+
 # Model outputs (except homework4b which needs to be submitted)
 outputs/**/*.csv
 outputs/**/*.pkl
@@ -76,6 +86,11 @@ outputs/homework6/**
 !outputs/homework6/**/*.pdf
 !outputs/homework6/**/*.md
 !outputs/homework6/**/*.docx
+!outputs/experiment1/**/*.csv
+!outputs/experiment1/**/*.png
+!outputs/experiment1/**/*.json
+!outputs/experiment1/**/*.md
+!outputs/experiment1/**/*.db
 
 # Credentials & secrets
 .env

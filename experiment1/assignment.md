@@ -1,0 +1,525 @@
+**《金融经济数据挖掘》**
+
+**实验指导书**
+
+**V6.1**
+
+<img src="experiment1_media/media/image1.jpeg"
+style="width:5.75694in;height:3.24306in" alt="DailySentiment" />
+
+**王波编**
+
+**2026年5月**
+
+总时长：16学时
+
+适用对象：大数据专业学生
+
+配套资源：金融新闻文本数据集、沪深300日度价格指数数据、中文金融情感词典、停用词表、数据库初始文件
+
+实验一 金融非结构化数据预处理
+
+-金融文本数据处理与日度市场情绪指标量化
+
+学时：4学时
+
+核心定位：非结构化金融文本→结构化自然周情绪指标（每5个交易日算一周），完成数据工程核心环节
+
+**一、实验目标**
+
+1\.
+对给定金融新闻文本完成轻量化预处理，基于BERT（Transformer）实现中文金融文本三分类情感量化标注；
+
+2\.
+按交易日维度聚合生成WeekPositive、WeekNeutral、WeekNegative标准化周度情绪指标；
+
+3\. 输出结构化周度数据，为羊群效应建模提供稳定输入；
+
+4\.
+支撑专业核心能力5：掌握非结构化数据处理技术，具备金融场景数据指标化工程能力。
+
+**二、实验要求**
+
+1\. 以一周（5 个交易日）为一个统计单位；
+
+2\. 按周汇总情感文本数量，剔除非交易日、空值、重复数据；
+
+3\. 输出周度情绪表，存入数据库并导出 CSV。
+
+**三、实验步骤与内容**
+
+**1. 数据加载与清洗**
+
+读取金融新闻，筛选 2014.10–2015.10，去重、去空、按周分组。
+
+**2. 情感分析（ BERT深度学习方案）**
+
+基于 HuggingFace 开源中文 BERT 模型，本地推理实现三分类情感标注（正面 /
+中性 / 负面），精度更高、适配金融语义。
+
+**3. 周度情绪指标计算**
+
+按每周统计：
+
+WeekPositive：第 t 周正面文本总数
+
+WeekNeutral：第 t 周中性文本总数
+
+WeekNegative：第 t 周负面文本总数
+
+周情绪占比：
+
+$$P\  = \ \frac{WeekPositive}{WeekPositive + WeekNegative}$$
+
+解释：一周里，正面文本占所有情感文本的比例，0~1 之间，越大越乐观。
+
+4\. 数据存储
+
+输出：weekly_sentiment.csv（包含
+week、WeekPositive、WeekNeutral、WeekNegative、P_t 字段）
+
+**四、实验报告**
+
+1\. 完成系统开发，撰写标准的实验报告
+
+2\. 截取周情绪指标表、数据库存储结果截图；
+
+3\. 简要分析情绪指标数据质量。
+
+4\. 在报告上附上你所写的代码。
+
+实验二 金融非结构化数据情感分析
+
+-基于市场情绪的金融羊群效应指数构建
+
+学时：4学时
+
+核心定位：基于情绪指标构建羊群效应量化指标，贴合LSV模型逻辑，完成金融特征工程
+
+**一、实验目标**
+
+1.用周度情绪构建羊群效应指标 H1、H2、H3；
+
+2.理解每个指标含义，掌握标准化与合成方法；
+
+3.输出平稳、可直接用于回归的周度羊群指数。
+
+4.支撑综合创新能力8：具备金融大数据特征工程能力，可实现跨领域量化指标设计。
+
+**二、实验要求**
+
+1\. 严格按照修正后的公式计算羊群效应指标，保证统计口径严谨；
+
+2\. 对指标进行归一化处理，确保后续与股指数据对比的合理性；
+
+3\. 按周输出完整的羊群效应指标时序数据，对接实验三建模分析。
+
+**三、实验步骤与内容**
+
+**1. 数据读取**
+
+加载实验一输出的周度情绪指标数据。
+
+**2. 羊群效应指标计算**
+
+**2.1 参数设计思想：**
+
+设计三个变量，
+
+（1）H1 = 当期情绪 − 历史均值=
+情绪偏离度（异常指标，<span class="mark">对比历史</span>）
+
+（2）H2 = 当期内部一致性=
+羊群集中度（<span class="mark">对比今天</span>）
+
+（3）H3 = 偏离 × 一致=
+真正羊群效应（<span class="mark">今天不仅一边倒，还明显偏离历史常态：今天疯不是疯，对比历史也算疯，那才是真疯</span>）
+
+**2.2 参数实现**
+
+变量统一说明：
+
+WeekPositive：第 t 周正面文本条数
+
+WeekNegative：第 t 周负面文本条数
+
+t：第 t 周（5 个交易日为 1 周）
+
+**（1）公式 1：周乐观情绪占比**
+
+<img src="experiment1_media/media/image2.png"
+style="width:2.81155in;height:0.58491in" />
+
+解释：第 t 周的乐观程度，0~1，越大越乐观。
+
+**（2）公式2：4 周滚动平均情绪（基准）**
+
+<img src="experiment1_media/media/image3.png"
+style="width:2.89404in;height:0.45219in" />
+
+解释：最近 4 周的平均情绪，当作 “市场正常情绪”。
+
+**（3）公式 3：情绪偏离度 H1<sub>t</sub>**
+
+<img src="experiment1_media/media/image4.png"
+style="width:1.6729in;height:0.42296in" />
+
+解释：本周情绪比平时 “高多少或低多少”。
+
+- H1 \> 0：比平时更乐观
+
+- H1 \< 0：比平时更悲观
+
+**（4）公式 4：意见一致性 H2<sub>t</sub>**
+
+<img src="experiment1_media/media/image5.png"
+style="width:3.14627in;height:0.44395in" />
+
+解释（重点）：看大家观点是否一致，有没有跟风抱团。
+
+- H2 越小 → 大家一边倒 → 羊群效应越强
+
+- H2 越大 → 多空分歧大 → 无羊群
+
+**（5）公式 5：最终羊群效应指标 H3<sub>t</sub>**
+
+<img src="experiment1_media/media/image6.png"
+style="width:2.92679in;height:0.40412in" />
+
+解释：
+
+Norm ( ) = 标准化，把 H1、H2 缩放到同一大小范围。
+
+**参数设计思想总结：真正的羊群效应必须同时满足两点，**
+
+① 情绪反常（H1 绝对值大）
+
+② 所有人都往一个方向跟风（H2 很小）
+
+两个条件同时满足，H3 才会变大，其余杂讯全部过滤掉。
+
+**3. 数据预处理**
+
+对 H1、H2 做Min-Max 归一化，剔除异常值。
+
+**4. 结果导出**
+
+生成包含交易日、H1t、H2t、H3t的数据集，输出：weekly_herd_index.csv
+
+**四、实验报告**
+
+1\. 完成系统开发，撰写标准的实验报告。
+
+2\. 截取系统主要程序，界面，附加解释和运行结果图。
+
+3\. 截取羊群效应指标时序表截图；
+
+4\. 说明指标构建的金融逻辑与合理性
+
+5\. 在报告上附上你所写的代码。
+
+实验三 基于金融非结构化数据的证券市场预测
+
+学时：8学时
+
+核心定位：融合情绪-股指数据，完成**相关性分析、协整检验、格兰杰因果检验**，验证羊群效应对市场收益的预测能力。
+
+**一、实验目标**
+
+1\. 对齐周度羊群效应指标与沪深 300 指数周收益率。
+
+2\. 完成同期相关性分析，初步判断指标与收益的关系。
+
+3\. 通过格兰杰因果检验自动确定最优滞后阶数。
+
+4\. 构建1 次滞后线性回归，并通过 \*\* 残差 ADF（EG 两步法）\*\*
+验证非伪回归。
+
+5\. 分析羊群效应与股指的预测关系，完成金融反身性解释。
+
+**二、实验要求**
+
+1\. 多源时间序列按周精准对齐，无缺失、无错位。
+
+2\. 遵循标准流程：**相关 → 格兰杰选最优滞后 → 一次回归 →
+一次残差平稳检验**。
+
+3\. 输出规范结果：相关系数、回归方程、残差 ADF、格兰杰检验、可视化图表。
+
+**三、实验步骤与内容**
+
+1\. 多源数据融合
+
+加载实验二输出的周度羊群效应指标（H3t）、沪深 300 日度价格数据，计算沪深
+300 周收益率，按自然周（5 个交易日）内连接对齐，构建统一建模数据集。
+
+2\. 同期相关性分析
+
+计算 H3 与沪深 300 周收益的 Pearson 相关系数，判断线性关系。
+
+3\. 格兰杰因果检验（自动选最优滞后）
+
+设置 maxlag=5，自动检验滞后 1~5 期，确定最优滞后阶数（如 lag=1）
+
+4\. 构建最优滞后回归模型（仅 1 次）
+
+<img src="experiment1_media/media/image7.png"
+style="width:2.96707in;height:0.34766in" />
+
+5\. EG 两步法・残差平稳性检验（仅 1 次）
+
+对回归残差做 ADF 检验，残差平稳（p\<0.05）→ 关系真实，非伪回归；
+
+残差不平稳 → 模型无效
+
+6\. 可视化与分析
+
+绘制羊群效应指数与沪深 300
+周收益率双轴时序图，结合金融反身性分析预测逻辑与市场含义。
+
+**四、实验报告**
+
+1\. 提交数据对齐、相关性分析、格兰杰检验、回归建模、残差检验全套代码。
+
+2\. 附上同期相关系数矩阵、最优滞后回归方程、拟合优度 R²。
+
+3\. 附上残差 ADF 检验结果表，并说明是否为伪回归。
+
+4\. 附上格兰杰因果检验 1~5 期结果，说明最优滞后阶数。
+
+5\. 提交羊群指标与沪深 300 收益率时序对比图。
+
+6\.
+总结并说明实验：羊群效应与指数收益是否相关、是否平稳、是否具有预测作用。
+
+7\. 截取程序运行结果与图表，附加简要解释，并附上完整代码。
+
+**附录：参考代码**
+
+**附录 1：BERT 三分类完整代码**
+
+import pandas as pd
+
+from transformers import pipeline
+
+\# 本地加载BERT情感模型（Transformer架构，三分类）
+
+sentiment_model = pipeline(
+
+"sentiment-analysis",
+
+model="uer/roberta-base-finetuned-chinanews-chinese"
+
+)
+
+\# 三分类情感预测函数
+
+def bert_sentiment(text):
+
+text = str(text)\[:512\] \# 截断超长文本
+
+res = sentiment_model(text)\[0\]
+
+if res\["label"\] == "positive":
+
+return 1 \# 正面
+
+elif res\["label"\] == "neutral":
+
+return 0 \# 中性
+
+else:
+
+return -1 \# 负面
+
+\# 1. 数据加载与清洗
+
+df = pd.read_csv("finance_news.csv")
+
+df\["date"\] = pd.to_datetime(df\["date"\])
+
+\# 筛选时间范围
+
+df = df\[(df\["date"\] \>= "2014-10-01") & (df\["date"\] \<=
+"2015-10-31")\]
+
+\# 去重、去空值
+
+df =
+df.drop_duplicates(subset=\["content"\]).dropna(subset=\["content"\])
+
+\# 2. BERT三分类情感标注
+
+df\["label"\] = df\["content"\].apply(bert_sentiment)
+
+\# 3. 按周聚合情绪指标
+
+df\["week"\] = df\["date"\].dt.to_period("W").dt.start_time
+
+weekly_sentiment = df.groupby("week")\["label"\].agg(
+
+WeekPositive=lambda x: (x == 1).sum(),
+
+WeekNeutral=lambda x: (x == 0).sum(),
+
+WeekNegative=lambda x: (x == -1).sum()
+
+).reset_index()
+
+\# 4. 计算周情绪占比P_t
+
+weekly_sentiment\["P_t"\] = weekly_sentiment\["WeekPositive"\] / (
+
+weekly_sentiment\["WeekPositive"\] + weekly_sentiment\["WeekNegative"\]
+
+).fillna(0)
+
+\# 5. 导出结果
+
+weekly_sentiment.to_csv("weekly_sentiment.csv", index=False,
+encoding="utf-8")
+
+print("周度情绪指标已生成：weekly_sentiment.csv")
+
+**附录2：实验三标准 Python 代码**
+
+\# ==========================
+
+\# 实验三 最终极简代码
+
+\# 流程：对齐 → 相关 → 格兰杰选滞后 → 1次回归 → 1次残差ADF → 画图
+
+\# ==========================
+
+import pandas as pd
+
+import numpy as np
+
+import matplotlib.pyplot as plt
+
+from statsmodels.tsa.stattools import adfuller, grangercausalitytests
+
+from sklearn.linear_model import LinearRegression
+
+\# --------------------------
+
+\# 1. 数据加载与对齐
+
+\# --------------------------
+
+herd = pd.read_csv("weekly_herd_index.csv")
+
+hs300 = pd.read_csv("hs300_daily.csv")
+
+hs300\["date"\] = pd.to_datetime(hs300\["date"\])
+
+herd\["week"\] = pd.to_datetime(herd\["week"\])
+
+\# 周度收益率
+
+hs300_week = hs300.resample("W",
+on="date")\["close"\].last().reset_index()
+
+hs300_week\["return"\] = hs300_week\["close"\].pct_change()
+
+\# 合并
+
+df = pd.merge(herd, hs300_week, left_on="week", right_on="date",
+how="inner")
+
+df = df.dropna()
+
+df = df.reset_index(drop=True)
+
+\# --------------------------
+
+\# 2. 同期相关性
+
+\# --------------------------
+
+print("=== 相关系数 ===")
+
+print(df\[\["H3t", "return"\]\].corr())
+
+\# --------------------------
+
+\# 3. 格兰杰因果：自动选最优滞后
+
+\# --------------------------
+
+print("\n=== 格兰杰因果检验 1~5期 ===")
+
+gc_data = df\[\["return", "H3t"\]\]
+
+grangercausalitytests(gc_data, maxlag=5)
+
+\# --------------------------
+
+\# 4. 构造最优滞后（这里以格兰杰最常用 lag=1 为例）
+
+\# --------------------------
+
+best_lag = 1
+
+df\[f"H3t_lag{best_lag}"\] = df\["H3t"\].shift(best_lag)
+
+df = df.dropna()
+
+\# --------------------------
+
+\# 5. 【只做1次】线性回归
+
+\# --------------------------
+
+X = df\[\[f"H3t_lag{best_lag}"\]\]
+
+y = df\["return"\]
+
+model = LinearRegression()
+
+model.fit(X, y)
+
+print("\n=== 最优滞后回归结果 ===")
+
+print(f"回归方程：return = {model.intercept\_:.4f} +
+{model.coef\_\[0\]:.4f}\*H3t_lag{best_lag}")
+
+print(f"R² = {model.score(X, y):.4f}")
+
+\# --------------------------
+
+\# 6. 【只做1次】EG两步法：残差ADF检验
+
+\# --------------------------
+
+y_hat = model.predict(X)
+
+resid = y - y_hat
+
+adf = adfuller(resid)
+
+print("\n=== 残差ADF检验（EG两步法）===")
+
+print(f"ADF统计量: {adf\[0\]:.4f}")
+
+print(f"p值: {adf\[1\]:.4f}")
+
+print("✅ 残差平稳" if adf\[1\] \< 0.05 else "❌ 伪回归")
+
+\# --------------------------
+
+\# 7. 可视化
+
+\# --------------------------
+
+plt.figure(figsize=(12,4))
+
+plt.plot(df\["week"\], df\["H3t"\], label="H3t", color="red")
+
+plt.plot(df\["week"\], df\["return"\], label="return", color="blue")
+
+plt.title("羊群指标 vs 沪深300周收益率")
+
+plt.legend()
+
+plt.show()
