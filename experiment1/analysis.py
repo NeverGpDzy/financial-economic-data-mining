@@ -69,10 +69,10 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # Lag features for H3t
     for lag in range(1, config.MAX_LAG + 1):
         out[f"H3_lag{lag}"] = out["H3t"].shift(lag)
-    # Rolling statistics
+    # Rolling statistics (min_periods = window to avoid incomplete-window pollution)
     for w in [3, 5]:
-        out[f"H3_roll_mean_{w}"] = out["H3t"].rolling(w, min_periods=1).mean()
-        out[f"H3_roll_std_{w}"] = out["H3t"].rolling(w, min_periods=1).std().fillna(0)
+        out[f"H3_roll_mean_{w}"] = out["H3t"].rolling(w, min_periods=w).mean()
+        out[f"H3_roll_std_{w}"] = out["H3t"].rolling(w, min_periods=w).std().fillna(0)
     # Time features (use week_end as datetime)
     week_dt = pd.to_datetime(out["week"])
     out["month"] = week_dt.dt.month
@@ -140,14 +140,18 @@ def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
         feat_cols_ret.extend([f"ret_roll_mean_{w}", f"ret_roll_std_{w}"])
     feat_cols_ret += ["month", "quarter"]
 
-    valid = df.dropna(subset=feat_cols_h3 + ["return"] + feat_cols_ret)
-    if len(valid) < 10:
-        return {}, {}, valid
+    # Each direction gets its own dropna to maximize usable samples
+    fwd_valid = df.dropna(subset=feat_cols_h3 + ["return"])
+    bwd_valid = df.dropna(subset=feat_cols_ret + ["H3t"])
+    all_valid = df.dropna(subset=feat_cols_h3 + ["return"] + feat_cols_ret)
+
+    if len(fwd_valid) < 10 or len(bwd_valid) < 10:
+        return {}, {}, pd.DataFrame()
 
     # Forward: predict return from H3 features
-    Xf = valid[feat_cols_h3].values
-    yf = valid["return"].values
-    split_f = int(len(valid) * config.TRAIN_RATIO)
+    Xf = fwd_valid[feat_cols_h3].values
+    yf = fwd_valid["return"].values
+    split_f = int(len(fwd_valid) * config.TRAIN_RATIO)
     model_f, metrics_f, pred_f = train_lgbm(
         pd.DataFrame(Xf[:split_f], columns=feat_cols_h3),
         yf[:split_f],
@@ -156,9 +160,9 @@ def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
     )
 
     # Backward: predict H3 from return features
-    Xb = valid[feat_cols_ret].values
-    yb = valid["H3t"].values
-    split_b = int(len(valid) * config.TRAIN_RATIO)
+    Xb = bwd_valid[feat_cols_ret].values
+    yb = bwd_valid["H3t"].values
+    split_b = int(len(bwd_valid) * config.TRAIN_RATIO)
     model_b, metrics_b, pred_b = train_lgbm(
         pd.DataFrame(Xb[:split_b], columns=feat_cols_ret),
         yb[:split_b],

@@ -34,6 +34,7 @@ LGBM_PARAMS = {
     "num_leaves": 31,
     "max_depth": 6,
     "n_estimators": 100,
+    "random_state": 42,
     "verbose": -1,
     "n_jobs": -1,
 }
