@@ -75,7 +75,7 @@ def write_report(summary: dict, correlation: pd.DataFrame, regression: pd.DataFr
 
 原始新闻共 {summary['audit']['raw_news_rows']} 行。经过日期范围、正文非空、正文去重、交易日过滤后，进入周度统计的新闻为 {summary['audit']['labeled_trading_day_rows']} 行，样本交易日范围为 {summary['audit']['date_start']} 至 {summary['audit']['date_end']}。
 
-本机未安装 `transformers`，且老师没有随数据包提供本地 BERT 模型文件。为了保证实验可复现，默认采用金融情绪词典打分器完成正面、中性、负面三分类；代码中将标题、分词正文和正文共同计分，标题及靠前词更高权重。该方案不依赖联网下载模型，适合提交时复跑。若后续本地已有 HuggingFace 模型缓存，可把 `experiment1/sentiment.py` 中的标注函数替换为指导书附录 BERT 推理。
+情绪标注采用 HuggingFace 开源中文金融情感模型 `yiyanghkust/finbert-tone-chinese`（BERT/Transformer 架构），本地批量推理实现三分类（正面/中性/负面）。该模型专门针对中文金融文本情绪识别训练，比通用主题分类模型更贴合指导书要求。标注方法为：{summary['audit'].get('labeling_method', 'bert')}。模型文件存放在仓库父目录 `models/` 下，不纳入 git 版本控制。
 
 周度情绪表已写入：
 

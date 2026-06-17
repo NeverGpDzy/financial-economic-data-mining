@@ -15,11 +15,15 @@ NEWS_FILE = RAW_DIR / "新闻数据.xls"
 HS300_FILE = RAW_DIR / "沪深300日价格指数.xls"
 DB_FILE = OUTPUT_DIR / "experiment1.db"
 
+# BERT model stored in parent directory to keep the repo lean
+MODEL_DIR = ROOT.parent / "models" / "yiyanghkust-finbert-tone-chinese"
+
 START_DATE = "2014-10-01"
 END_DATE = "2015-10-31"
 TRADING_DAYS_PER_WEEK = 5
 ROLLING_BASELINE_WEEKS = 4
 MAX_GRANGER_LAG = 5
+BERT_BATCH_SIZE = 256
 
 STUDENT_ID = "202331060205"
 STUDENT_NAME = "丁致宇"

@@ -11,3 +11,5 @@ Pillow
 python-docx
 pyarrow
 xlrd
+transformers
+torch

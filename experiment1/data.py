@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import config
-from .sentiment import label_from_score, label_name, score_text
+from .sentiment import bert_label_batch, label_from_score, label_name, score_text
 
 
 def load_news() -> pd.DataFrame:
@@ -52,11 +52,25 @@ def clean_and_label_news(news: pd.DataFrame, calendar: pd.DataFrame) -> tuple[pd
     after_dedup = len(df)
     cal = calendar[["date", "week_id", "week_start", "week_end"]].rename(columns={"date": "trade_date"})
     df = df.merge(cal, on="trade_date", how="inner")
-    df["sentiment_score"] = [
-        score_text(seg, title, content)
-        for seg, title, content in zip(df.get("SegContent"), df.get("Title"), df.get("Content"))
-    ]
-    df["label"] = df["sentiment_score"].map(label_from_score)
+
+    # Prefer BERT batch labeling; fall back to lexicon if model unavailable
+    use_bert = config.MODEL_DIR.exists()
+    labeling_method = "lexicon"
+    if use_bert:
+        try:
+            texts = (df["Title"].fillna("") + " " + df["Content"].fillna("")).tolist()
+            df["label"] = bert_label_batch(texts, batch_size=config.BERT_BATCH_SIZE)
+            labeling_method = "bert"
+        except Exception:
+            use_bert = False
+
+    if not use_bert:
+        df["sentiment_score"] = [
+            score_text(seg, title, content)
+            for seg, title, content in zip(df.get("SegContent"), df.get("Title"), df.get("Content"))
+        ]
+        df["label"] = df["sentiment_score"].map(label_from_score)
+
     df["label_name"] = df["label"].map(label_name)
     df = df.sort_values(["date_time", "NewsID"]).reset_index(drop=True)
     audit = {
@@ -67,6 +81,7 @@ def clean_and_label_news(news: pd.DataFrame, calendar: pd.DataFrame) -> tuple[pd
         "non_trading_or_out_of_calendar_removed": after_dedup - len(df),
         "date_start": str(df["trade_date"].min().date()) if not df.empty else "",
         "date_end": str(df["trade_date"].max().date()) if not df.empty else "",
+        "labeling_method": labeling_method,
     }
     return df, audit
 
@@ -109,9 +124,8 @@ def save_outputs(
     modeling: pd.DataFrame,
 ) -> None:
     config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    labeled_sample = labeled[
-        ["NewsID", "Title", "date_time", "trade_date", "week_id", "sentiment_score", "label", "label_name"]
-    ].head(1000)
+    sample_cols = [c for c in ["NewsID", "Title", "date_time", "trade_date", "week_id", "sentiment_score", "label", "label_name"] if c in labeled.columns]
+    labeled_sample = labeled[sample_cols].head(1000)
     labeled_sample.to_csv(config.OUTPUT_DIR / "sentiment_labeled_sample.csv", index=False, encoding="utf-8-sig")
     weekly_sentiment.to_csv(config.OUTPUT_DIR / "weekly_sentiment.csv", index=False, encoding="utf-8-sig")
     weekly_herd.to_csv(config.OUTPUT_DIR / "weekly_herd_index.csv", index=False, encoding="utf-8-sig")
@@ -142,7 +156,7 @@ def write_data_description(audit: dict, path: Path | None = None) -> None:
 - 新闻筛选区间：{config.START_DATE} 至 {config.END_DATE}。
 - 周度统计单位：严格按沪深300交易日历每 {config.TRADING_DAYS_PER_WEEK} 个交易日分为一组，而不是简单日历周。
 - 清洗步骤：删除时间或正文为空的数据，按正文去重，剔除非交易日新闻。
-- 情绪标注：默认使用可复现的金融情绪词典打分器，输出正面、中性、负面三分类；如本地安装 `transformers` 且已缓存模型，可替换为指导书附录中的 BERT 推理方案。
+- 情绪标注：使用 `yiyanghkust/finbert-tone-chinese` 模型进行 BERT 三分类推理（正面/中性/负面）；若模型文件不可用则回退到金融情绪词典打分器。
 
 ## 清洗摘要
 

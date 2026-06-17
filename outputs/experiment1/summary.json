@@ -6,26 +6,27 @@
     "labeled_trading_day_rows": 30623,
     "non_trading_or_out_of_calendar_removed": 3853,
     "date_start": "2014-10-08",
-    "date_end": "2015-10-21"
+    "date_end": "2015-10-21",
+    "labeling_method": "bert"
   },
   "weekly_rows": 51,
   "modeling_rows": 51,
-  "best_lag": 3,
-  "correlation_h3_return": -0.026510433995579168,
+  "best_lag": 5,
+  "correlation_h3_return": -0.01750208972167345,
   "regression": {
-    "best_lag": 3,
-    "intercept": 0.017855254451344185,
-    "beta": -0.04634078238342675,
-    "r_squared": 0.023766549983148977,
-    "p_value_beta": 0.29547060769541267,
-    "n_obs": 48,
-    "equation": "return_t = 0.017855 + -0.046341 * H3t_lag3"
+    "best_lag": 5,
+    "intercept": 0.0225276042412534,
+    "beta": -0.08878297435903545,
+    "r_squared": 0.05562178545514662,
+    "p_value_beta": 0.11459047890956618,
+    "n_obs": 46,
+    "equation": "return_t = 0.022528 + -0.088783 * H3t_lag5"
   },
   "adf": {
-    "adf_statistic": -5.868273027121531,
-    "p_value": 3.2860464679663706e-07,
-    "used_lag": 0,
-    "n_obs": 47,
+    "adf_statistic": -4.866921980170076,
+    "p_value": 4.043066099432242e-05,
+    "used_lag": 1,
+    "n_obs": 44,
     "is_residual_stationary_5pct": true
   },
   "plots": [
