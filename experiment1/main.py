@@ -112,7 +112,11 @@ def write_report(summary: dict) -> None:
 | MSE | {fwd['mse']:.6f} |
 | MAE | {fwd['mae']:.6f} |
 | R² | {fwd['r2']:.4f} |
+| IC（Spearman 秩相关） | {fwd.get('ic', 0):.4f} |
+| 方向准确率 | {fwd.get('direction_acc', 0):.2%} |
 | 测试集样本数 | {fwd['n_test']} |
+
+**关于 R² 为负的说明**：R² < 0 表示模型预测精度不及简单均值预测，这在小样本（测试集仅 {fwd['n_test']} 条）时序预测中属正常现象。IC 和方向准确率更能反映模型的实用预测价值。
 
 正向最优预测滞后（SHAP 特征重要性）：{fwd_best['best_lag'] if fwd_best is not None else 'N/A'}
 
@@ -122,10 +126,10 @@ SHAP 最重要特征：`{best_feat}`。图表见 `outputs/experiment1/shap_depen
 
 ### 4.5 双向传导验证
 
-| 方向 | MSE | MAE | R² | 最优滞后 |
-| --- | ---: | ---: | ---: | ---: |
-| H3→收益率 | {fwd['mse']:.6f} | {fwd['mae']:.6f} | {fwd['r2']:.4f} | {fwd_best['best_lag'] if fwd_best is not None else 'N/A'} |
-| 收益率→H3 | {bwd['mse']:.6f} | {bwd['mae']:.6f} | {bwd['r2']:.4f} | {bwd_best['best_lag'] if bwd_best is not None else 'N/A'} |
+| 方向 | MSE | MAE | R² | IC | 方向准确率 | 最优滞后 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| H3→收益率 | {fwd['mse']:.6f} | {fwd['mae']:.6f} | {fwd['r2']:.4f} | {fwd.get('ic', 0):.4f} | {fwd.get('direction_acc', 0):.2%} | {fwd_best['best_lag'] if fwd_best is not None else 'N/A'} |
+| 收益率→H3 | {bwd['mse']:.6f} | {bwd['mae']:.6f} | {bwd['r2']:.4f} | {bwd.get('ic', 0):.4f} | {bwd.get('direction_acc', 0):.2%} | {bwd_best['best_lag'] if bwd_best is not None else 'N/A'} |
 
 ### 4.6 金融反身性分析
 
@@ -206,6 +210,8 @@ def run() -> dict:
                 "mse": float(bwd.iloc[0]["mse"]),
                 "mae": float(bwd.iloc[0]["mae"]),
                 "r2": float(bwd.iloc[0]["r2"]),
+                "ic": float(bwd.iloc[0].get("ic", 0)),
+                "direction_acc": float(bwd.iloc[0].get("direction_acc", 0)),
                 "n_test": int(bwd.iloc[0]["n_test"]),
             }
 
@@ -255,6 +261,32 @@ def _build_reflexivity_notes(fwd, bwd, comp) -> str:
         return ""
     fwd_r2 = fwd.get("r2", 0)
     bwd_r2 = bwd.get("r2", 0)
+    fwd_ic = fwd.get("ic", 0)
+    bwd_ic = bwd.get("ic", 0)
+    fwd_da = fwd.get("direction_acc", 0)
+    bwd_da = bwd.get("direction_acc", 0)
+
+    # Both R² negative — model worse than mean prediction
+    if fwd_r2 < 0 and bwd_r2 < 0:
+        notes = (
+            f"双向模型 R² 均为负（正向 {fwd_r2:.4f}，反向 {bwd_r2:.4f}），"
+            "说明在当前小样本条件下，两个方向的预测精度均不及简单均值预测。\n\n"
+        )
+        # Still compare IC for directional signal
+        if abs(fwd_ic) > abs(bwd_ic):
+            notes += (
+                f"但从 IC（秩相关）来看，正向 IC={fwd_ic:.4f}，反向 IC={bwd_ic:.4f}，"
+                "情绪对收益的方向性预测信号略强于反向传导。"
+            )
+        elif abs(bwd_ic) > abs(fwd_ic):
+            notes += (
+                f"但从 IC（秩相关）来看，反向 IC={bwd_ic:.4f}，正向 IC={fwd_ic:.4f}，"
+                "收益对情绪的方向性引导信号略强。"
+            )
+        else:
+            notes += "双向 IC 相近，情绪与收益之间的方向性传导信号对等。"
+        return notes
+
     if fwd_r2 > bwd_r2:
         return (
             f"正向模型 R²={fwd_r2:.4f} 高于反向 R²={bwd_r2:.4f}，"

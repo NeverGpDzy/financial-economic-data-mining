@@ -34,7 +34,8 @@ def winsorize_series(series: pd.Series, sigma: float = 3.0) -> pd.Series:
 def build_herd_index(weekly_sentiment: pd.DataFrame) -> pd.DataFrame:
     df = weekly_sentiment.copy().sort_values("week").reset_index(drop=True)
     df["E_P_t"] = df["P_t"].shift(1).rolling(config.ROLLING_BASELINE_WEEKS, min_periods=1).mean()
-    df["E_P_t"] = df["E_P_t"].fillna(df["P_t"])
+    # First row has no history — leave E_P_t as NaN so H1t/H3t are NaN and
+    # dropped downstream rather than biased to zero.
     df["H1t"] = df["P_t"] - df["E_P_t"]
     denom = df["WeekPositive"] + df["WeekNegative"]
     df["H2t"] = (1 - (df["WeekPositive"] - df["WeekNegative"]).abs() / denom).where(denom.ne(0), 1.0)
@@ -105,11 +106,18 @@ def train_lgbm(X_train, y_train, X_test, y_test) -> tuple[lgb.LGBMRegressor, dic
 
 
 def evaluate(y_true, y_pred) -> dict:
+    from scipy.stats import spearmanr
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    ic, _ = spearmanr(y_true, y_pred)
+    direction_acc = float(np.mean(np.sign(y_true) == np.sign(y_pred)))
     return {
         "mse": float(mean_squared_error(y_true, y_pred)),
         "mae": float(mean_absolute_error(y_true, y_pred)),
         "r2": float(r2_score(y_true, y_pred)),
+        "ic": float(ic) if not np.isnan(ic) else 0.0,
+        "direction_acc": direction_acc,
         "n_test": int(len(y_true)),
     }
 
@@ -135,8 +143,8 @@ def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
         df[col] = df["return"].shift(lag)
         feat_cols_ret.append(col)
     for w in [3, 5]:
-        df[f"ret_roll_mean_{w}"] = df["return"].rolling(w, min_periods=1).mean()
-        df[f"ret_roll_std_{w}"] = df["return"].rolling(w, min_periods=1).std().fillna(0)
+        df[f"ret_roll_mean_{w}"] = df["return"].rolling(w, min_periods=w).mean()
+        df[f"ret_roll_std_{w}"] = df["return"].rolling(w, min_periods=w).std().fillna(0)
         feat_cols_ret.extend([f"ret_roll_mean_{w}", f"ret_roll_std_{w}"])
     feat_cols_ret += ["month", "quarter"]
 
