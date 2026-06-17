@@ -43,6 +43,7 @@ def build_herd_index(weekly_sentiment: pd.DataFrame) -> pd.DataFrame:
     df["H2t_winsor"] = winsorize_series(df["H2t"])
     df["H1t_norm"] = _minmax(df["H1t_winsor"].abs())
     df["H2t_norm"] = _minmax(df["H2t_winsor"])
+    # H2t is a disagreement score: smaller H2t means stronger one-sided consensus.
     df["H3t"] = df["H1t_norm"] * (1 - df["H2t_norm"])
     columns = [
         "week", "week_start", "week_end", "week_id", "P_t", "E_P_t", "H1t", "H2t",
@@ -70,10 +71,11 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # Lag features for H3t
     for lag in range(1, config.MAX_LAG + 1):
         out[f"H3_lag{lag}"] = out["H3t"].shift(lag)
-    # Rolling statistics (min_periods = window to avoid incomplete-window pollution)
+    # Rolling statistics use only information available before the target week.
+    h3_past = out["H3t"].shift(1)
     for w in [3, 5]:
-        out[f"H3_roll_mean_{w}"] = out["H3t"].rolling(w, min_periods=w).mean()
-        out[f"H3_roll_std_{w}"] = out["H3t"].rolling(w, min_periods=w).std().fillna(0)
+        out[f"H3_roll_mean_{w}"] = h3_past.rolling(w, min_periods=w).mean()
+        out[f"H3_roll_std_{w}"] = h3_past.rolling(w, min_periods=w).std()
     # Time features (use week_end as datetime)
     week_dt = pd.to_datetime(out["week"])
     out["month"] = week_dt.dt.month
@@ -96,22 +98,32 @@ def temporal_train_test_split(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFr
     return df.iloc[:split].copy(), df.iloc[split:].copy()
 
 
-def train_lgbm(X_train, y_train, X_test, y_test) -> tuple[lgb.LGBMRegressor, dict, np.ndarray]:
+def train_lgbm(
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    direction_baseline=None,
+) -> tuple[lgb.LGBMRegressor, dict, np.ndarray]:
     """Train LightGBM, return model, metrics dict, test predictions."""
     model = lgb.LGBMRegressor(**config.LGBM_PARAMS)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
-    metrics = evaluate(y_test, y_pred)
+    metrics = evaluate(y_test, y_pred, direction_baseline=direction_baseline)
     return model, metrics, y_pred
 
 
-def evaluate(y_true, y_pred) -> dict:
+def evaluate(y_true, y_pred, direction_baseline=None) -> dict:
     from scipy.stats import spearmanr
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     ic, _ = spearmanr(y_true, y_pred)
-    direction_acc = float(np.mean(np.sign(y_true) == np.sign(y_pred)))
+    if direction_baseline is None:
+        direction_acc = float(np.mean(np.sign(y_true) == np.sign(y_pred)))
+    else:
+        baseline = np.asarray(direction_baseline)
+        direction_acc = float(np.mean(np.sign(y_true - baseline) == np.sign(y_pred - baseline)))
     return {
         "mse": float(mean_squared_error(y_true, y_pred)),
         "mae": float(mean_absolute_error(y_true, y_pred)),
@@ -133,6 +145,16 @@ def compute_shap(model, X_test) -> tuple[np.ndarray, pd.DataFrame]:
     return shap_values, importance
 
 
+def compute_lgbm_gain_importance(model: lgb.LGBMRegressor, feature_names: list[str]) -> pd.DataFrame:
+    """Return LightGBM feature importance sorted by split gain."""
+    gain = model.booster_.feature_importance(importance_type="gain")
+    return (
+        pd.DataFrame({"feature": feature_names, "importance": gain})
+        .sort_values("importance", ascending=False)
+        .reset_index(drop=True)
+    )
+
+
 def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
     """Forward: H3→return. Backward: return→H3. Return metrics and comparison."""
     df = build_features(df)
@@ -142,15 +164,18 @@ def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
         col = f"ret_lag{lag}"
         df[col] = df["return"].shift(lag)
         feat_cols_ret.append(col)
+    ret_past = df["return"].shift(1)
     for w in [3, 5]:
-        df[f"ret_roll_mean_{w}"] = df["return"].rolling(w, min_periods=w).mean()
-        df[f"ret_roll_std_{w}"] = df["return"].rolling(w, min_periods=w).std().fillna(0)
+        df[f"ret_roll_mean_{w}"] = ret_past.rolling(w, min_periods=w).mean()
+        df[f"ret_roll_std_{w}"] = ret_past.rolling(w, min_periods=w).std()
         feat_cols_ret.extend([f"ret_roll_mean_{w}", f"ret_roll_std_{w}"])
     feat_cols_ret += ["month", "quarter"]
 
     # Each direction gets its own dropna to maximize usable samples
     fwd_valid = df.dropna(subset=feat_cols_h3 + ["return"])
-    bwd_valid = df.dropna(subset=feat_cols_ret + ["H3t"])
+    bwd_valid = df.dropna(subset=feat_cols_ret + ["H3t"]).copy()
+    bwd_valid["H3_prev"] = bwd_valid["H3t"].shift(1)
+    bwd_valid = bwd_valid.dropna(subset=["H3_prev"])
 
     if len(fwd_valid) < 10 or len(bwd_valid) < 10:
         return {}, {}, pd.DataFrame()
@@ -175,13 +200,12 @@ def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
         yb[:split_b],
         pd.DataFrame(Xb[split_b:], columns=feat_cols_ret),
         yb[split_b:],
+        direction_baseline=bwd_valid["H3_prev"].values[split_b:],
     )
 
     # Feature importance for both directions
-    fi_forward = pd.DataFrame({"feature": feat_cols_h3, "importance": model_f.feature_importances_})
-    fi_forward = fi_forward.sort_values("importance", ascending=False).reset_index(drop=True)
-    fi_backward = pd.DataFrame({"feature": feat_cols_ret, "importance": model_b.feature_importances_})
-    fi_backward = fi_backward.sort_values("importance", ascending=False).reset_index(drop=True)
+    fi_forward = compute_lgbm_gain_importance(model_f, feat_cols_h3)
+    fi_backward = compute_lgbm_gain_importance(model_b, feat_cols_ret)
 
     comparison = pd.DataFrame([
         {"direction": "H3→return (forward)", **metrics_f, "best_lag": _best_lag_from_importance(fi_forward, "H3_lag")},
@@ -209,6 +233,7 @@ def save_analysis_outputs(
     backward_comparison: pd.DataFrame,
     shap_values: np.ndarray,
     shap_importance: pd.DataFrame,
+    lgbm_importance: pd.DataFrame,
     forward_metrics: dict,
     backward_metrics: dict,
     test_data: pd.DataFrame,
@@ -224,6 +249,8 @@ def save_analysis_outputs(
     pred_df.to_csv(config.OUTPUT_DIR / "lgbm_forward_results.csv", index=False, encoding="utf-8-sig")
     # Backward comparison
     backward_comparison.to_csv(config.OUTPUT_DIR / "bidirectional_comparison.csv", index=False, encoding="utf-8-sig")
+    # LightGBM split-gain importance and SHAP importance are separate diagnostics.
+    lgbm_importance.to_csv(config.OUTPUT_DIR / "lgbm_feature_importance.csv", index=False, encoding="utf-8-sig")
     # SHAP importance
     shap_importance.to_csv(config.OUTPUT_DIR / "shap_importance.csv", index=False, encoding="utf-8-sig")
     # Summary

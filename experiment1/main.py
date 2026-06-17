@@ -24,6 +24,7 @@ from .analysis import (
     build_herd_index,
     build_modeling_dataset,
     bidirectional_modeling,
+    compute_lgbm_gain_importance,
     compute_shap,
     save_analysis_outputs,
     train_lgbm,
@@ -197,6 +198,7 @@ def run() -> dict:
     print(f"  正向 R²={forward_metrics['r2']:.4f}, MSE={forward_metrics['mse']:.6f}")
 
     print("SHAP 可解释性分析...")
+    lgbm_importance = compute_lgbm_gain_importance(model, feature_cols)
     shap_values, shap_importance = compute_shap(model, X_test)
     best_shap_feature = shap_importance.iloc[0]["feature"] if len(shap_importance) > 0 else "H3_lag1"
 
@@ -223,13 +225,13 @@ def run() -> dict:
     test_pred_df["residual"] = test_pred_df["return"] - test_pred_df["predicted_return"]
 
     save_analysis_outputs(
-        featured, y_pred, bidir_comparison, shap_values, shap_importance,
+        featured, y_pred, bidir_comparison, shap_values, shap_importance, lgbm_importance,
         forward_metrics, backward_metrics, test_pred_df, modeling,
     )
 
     plots = generate_all_plots(
         weekly_sentiment, weekly_herd, modeling,
-        shap_values, X_test, shap_importance,
+        shap_values, X_test, shap_importance, lgbm_importance,
         test_pred_df, bidir_comparison,
     )
     write_data_description(audit)
@@ -243,6 +245,7 @@ def run() -> dict:
         "backward_metrics": backward_metrics,
         "bidirectional_comparison": bidir_comparison.to_dict(orient="records"),
         "best_shap_feature": best_shap_feature,
+        "lgbm_gain_top5": lgbm_importance.head(5).to_dict(orient="records"),
         "shap_top5": shap_importance.head(5).to_dict(orient="records"),
         "plots": plots,
         "reflexivity_notes": _build_reflexivity_notes(forward_metrics, backward_metrics, bidir_comparison),

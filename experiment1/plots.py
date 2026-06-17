@@ -77,8 +77,8 @@ def plot_feature_importance(importance_df: pd.DataFrame) -> Path:
     top = importance_df.head(10).iloc[::-1]
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.barh(top["feature"], top["importance"], color="#1971c2")
-    ax.set_title("LightGBM 特征重要性 (Top 10)")
-    ax.set_xlabel("Importance (Gain)")
+    ax.set_title("LightGBM Gain 特征重要性 (Top 10)")
+    ax.set_xlabel("Gain")
     fig.tight_layout()
     fig.savefig(path, dpi=180)
     plt.close(fig)
@@ -170,6 +170,7 @@ def generate_all_plots(
     shap_values: np.ndarray,
     X_test: pd.DataFrame,
     shap_importance: pd.DataFrame,
+    lgbm_importance: pd.DataFrame,
     test_pred_df: pd.DataFrame,
     comparison: pd.DataFrame,
 ) -> list[str]:
@@ -178,7 +179,7 @@ def generate_all_plots(
         plot_weekly_sentiment(weekly),
         plot_herd_index(herd),
         plot_market_relation(modeling),
-        plot_feature_importance(shap_importance),
+        plot_feature_importance(lgbm_importance),
         plot_shap_dependence(shap_values, X_test, best_feature),
         plot_residuals(test_pred_df),
         plot_bidirectional_comparison(comparison),
