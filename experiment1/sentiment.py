@@ -110,9 +110,9 @@ def _tokens(segmented: str | None, title: str | None, content: str | None) -> li
     if segmented:
         parts.extend(str(segmented).split("|"))
     if title:
-        parts.extend(re.findall(r"[一-鿿A-Za-z0-9]+", str(title)))
+        parts.extend(re.findall(r"[\u4e00-\u9fffA-Za-z0-9]+", str(title)))
     if content:
-        parts.extend(re.findall(r"[一-鿿A-Za-z0-9]+", str(content)))
+        parts.extend(re.findall(r"[\u4e00-\u9fffA-Za-z0-9]+", str(content)))
     return [p.strip() for p in parts if p and p.strip()]
 
 
