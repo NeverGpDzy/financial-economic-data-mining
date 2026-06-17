@@ -127,6 +127,13 @@ def plot_bidirectional_comparison(comparison: pd.DataFrame) -> Path:
     path = config.OUTPUT_DIR / "bidirectional_comparison.png"
     metrics = ["mse", "mae", "r2"]
     labels = ["MSE", "MAE", "R²"]
+    if comparison.empty or "direction" not in comparison.columns:
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.text(0.5, 0.5, "数据不足，无法绘制双向对比", ha="center", va="center", fontsize=14)
+        ax.set_axis_off()
+        fig.savefig(path, dpi=180)
+        plt.close(fig)
+        return path
     fwd_row = comparison[comparison["direction"].str.contains("forward")]
     bwd_row = comparison[comparison["direction"].str.contains("backward")]
     if fwd_row.empty or bwd_row.empty:

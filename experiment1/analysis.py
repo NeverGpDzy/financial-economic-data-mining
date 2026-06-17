@@ -143,7 +143,6 @@ def bidirectional_modeling(df: pd.DataFrame) -> tuple[dict, dict, pd.DataFrame]:
     # Each direction gets its own dropna to maximize usable samples
     fwd_valid = df.dropna(subset=feat_cols_h3 + ["return"])
     bwd_valid = df.dropna(subset=feat_cols_ret + ["H3t"])
-    all_valid = df.dropna(subset=feat_cols_h3 + ["return"] + feat_cols_ret)
 
     if len(fwd_valid) < 10 or len(bwd_valid) < 10:
         return {}, {}, pd.DataFrame()
