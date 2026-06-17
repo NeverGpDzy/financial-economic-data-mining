@@ -1,0 +1,12 @@
+﻿feature,importance
+H3_lag1,0.0
+H3_lag2,0.0
+H3_lag3,0.0
+H3_lag4,0.0
+H3_lag5,0.0
+H3_roll_mean_3,0.0
+H3_roll_mean_5,0.0
+H3_roll_std_3,0.0
+H3_roll_std_5,0.0
+month,0.0
+quarter,0.0

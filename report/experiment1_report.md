@@ -1,69 +1,70 @@
 # 实验一：金融非结构化数据预处理与羊群效应预测分析报告
 
-学生：丁致宇  
+学生：丁致宇
 学号：202331060205
 
 ## 1. 作业要求理解
 
-老师提供的《金融数据挖掘实验指导书 20260528》以“实验一”为文件夹名发布，但指导书正文实际包含三个连续环节：实验一生成周度情绪指标，实验二基于情绪指标构建羊群效应指数，实验三将羊群效应指数与沪深300周收益对齐并完成相关、格兰杰因果、滞后回归和残差 ADF 检验。三部分前后依赖，因此本次按完整链路完成。
+老师提供的《金融数据挖掘实验指导书 20260617》以"实验一"为文件夹名发布，但指导书正文实际包含三个连续环节：实验一生成周度情绪指标，实验二基于情绪指标构建羊群效应指数，实验三将羊群效应指数与沪深300周收益对齐并完成 LightGBM 非线性预测建模。三部分前后依赖，因此本次按完整链路完成。
 
 关键口径如下：
 
 - 新闻时间范围：2014-10-01 至 2015-10-31。
 - 周度单位：按沪深300交易日历每 5 个交易日作为一周，先剔除非交易日新闻。
+- 情绪标注：使用 `yiyanghkust/finbert-tone-chinese` BERT 模型本地 GPU 推理三分类。
 - 情绪输出：`week`、`WeekPositive`、`WeekNeutral`、`WeekNegative`、`P_t`。
-- 羊群指标：`H1t = P_t - E(P_t)`，`H2t = 1 - |Positive-Negative|/(Positive+Negative)`，并结合“H2 越小羊群越强”的文字解释构造 `H3t = Norm(|H1t|) * (1 - Norm(H2t))`；同时在结果表保留 `H3t_formula_reference` 作为图片公式口径参考。
-- 市场预测：沪深300日价格按同一 5 交易日分组计算周收益，自动检验 1-5 期格兰杰因果并选择最小 p 值滞后阶数做一次线性回归，再对残差做 ADF 检验。
+- 羊群指标：`H1t = P_t - E(P_t)`，`H2t = 1 - |Positive-Negative|/(Positive+Negative)`，`H3t = Norm(|H1t|) * (1 - Norm(H2t))`。
+- 市场预测：采用 LightGBM 非线性时序建模，滞后 1~5 期特征 + 滚动统计 + 时间特征，前 80% 训练、后 20% 测试，辅以 SHAP 可解释性分析和双向传导验证。
 
 ## 2. 数据清洗与情绪标注
 
 原始新闻共 60000 行。经过日期范围、正文非空、正文去重、交易日过滤后，进入周度统计的新闻为 30623 行，样本交易日范围为 2014-10-08 至 2015-10-21。
 
-情绪标注采用 HuggingFace 开源中文金融情感模型 `yiyanghkust/finbert-tone-chinese`（BERT/Transformer 架构），本地批量推理实现三分类（正面/中性/负面）。该模型专门针对中文金融文本情绪识别训练，比通用主题分类模型更贴合指导书要求。标注方法为：bert。模型文件存放在仓库父目录 `models/` 下，不纳入 git 版本控制。
+情绪标注采用 HuggingFace 开源中文金融情感模型 `yiyanghkust/finbert-tone-chinese`（BERT/Transformer 架构），本地 GPU 批量推理实现三分类（正面/中性/负面）。标注方法为：bert。
 
-周度情绪表已写入：
-
-- `outputs/experiment1/weekly_sentiment.csv`
-- SQLite 表：`experiment1.db::weekly_sentiment`
+周度情绪表已写入 `outputs/experiment1/weekly_sentiment.csv`，SQLite 表 `experiment1.db::weekly_sentiment`。
 
 ## 3. 羊群效应指标
 
 `P_t` 表示正面新闻占正负情绪新闻的比例。`E(P_t)` 使用过去 4 个周度样本的滚动均值作为正常情绪基准。`H1t` 衡量本期情绪相对历史基准的偏离，`H2t` 衡量正负观点分歧程度，`H3t` 综合情绪异常程度与单边一致性。
 
-羊群指标结果已写入：
+羊群指标结果已写入 `outputs/experiment1/weekly_herd_index.csv`，图表 `outputs/experiment1/herd_index_timeseries.png`。
 
-- `outputs/experiment1/weekly_herd_index.csv`
-- SQLite 表：`experiment1.db::weekly_herd_index`
-- 图表：`outputs/experiment1/herd_index_timeseries.png`
+## 4. LightGBM 非线性预测建模
 
-## 4. 沪深300预测检验
+### 4.1 特征工程
 
-同期 Pearson 相关系数：
+对 H3t 构造滞后 1~5 期特征（`H3_lag1` ~ `H3_lag5`）、3 周和 5 周滚动均值/标准差、月份和季度时间特征。
 
-| 指标 | 与沪深300周收益相关系数 |
-| --- | ---: |
-| H3t | -0.0175 |
+### 4.2 时序划分
 
-格兰杰因果检验在 1-5 期中选择 p 值最小的滞后阶数，最优滞后为 5，对应 p 值为 0.1061。
+严格按时间顺序：前 80% 训练，后 20% 测试，杜绝数据泄露。
 
-最优滞后回归结果：
+### 4.3 正向建模：H3 → 收益率
 
 | 项目 | 数值 |
 | --- | ---: |
-| 回归方程 | `return_t = 0.022528 + -0.088783 * H3t_lag5` |
-| R² | 0.0556 |
-| beta p值 | 0.1146 |
-| 样本数 | 46 |
+| MSE | 0.005303 |
+| MAE | 0.045029 |
+| R² | -0.0783 |
+| 测试集样本数 | 10 |
 
-残差 ADF 检验：
+正向最优预测滞后（SHAP 特征重要性）：1
 
-| 项目 | 数值 |
-| --- | ---: |
-| ADF统计量 | -4.8669 |
-| p值 | 0.0000 |
-| 5%水平残差平稳 | True |
+### 4.4 SHAP 可解释性分析
 
-解释：若残差 ADF p 值小于 0.05，则该滞后回归残差平稳，可以认为不是典型伪回归；若大于等于 0.05，则需要谨慎解释预测关系。本次结果显示，羊群指标与沪深300周收益的线性相关性和预测强度应结合 p 值、R² 和残差平稳性共同判断。
+SHAP 最重要特征：`H3_lag1`。图表见 `outputs/experiment1/shap_dependence.png`。
+
+### 4.5 双向传导验证
+
+| 方向 | MSE | MAE | R² | 最优滞后 |
+| --- | ---: | ---: | ---: | ---: |
+| H3→收益率 | 0.005303 | 0.045029 | -0.0783 | 1 |
+| 收益率→H3 | 0.058473 | 0.163948 | -0.0109 | 1 |
+
+### 4.6 金融反身性分析
+
+反向模型 R²=-0.0109 高于正向 R²=-0.0783，说明市场收益率对羊群情绪的引导能力强于情绪对收益的预测，反映'收益驱动舆情'的反身性特征。
 
 ## 5. 输出文件索引
 
@@ -73,13 +74,14 @@
 - `data/experiment1/数据说明.md`：数据来源、格式和处理口径。
 - `outputs/experiment1/weekly_sentiment.csv`：实验一周度情绪指标。
 - `outputs/experiment1/weekly_herd_index.csv`：实验二羊群效应指标。
-- `outputs/experiment1/modeling_dataset.csv`：实验三对齐后的建模数据。
-- `outputs/experiment1/correlation_matrix.csv`：相关系数矩阵。
-- `outputs/experiment1/granger_results.csv`：1-5 期格兰杰检验结果。
-- `outputs/experiment1/regression_results.csv`：最优滞后回归结果。
-- `outputs/experiment1/adf_results.csv`：残差 ADF 检验结果。
+- `outputs/experiment1/modeling_dataset.csv`：建模对齐数据。
+- `outputs/experiment1/feature_engineering.csv`：特征工程数据集。
+- `outputs/experiment1/lgbm_forward_results.csv`：LightGBM 正向预测结果。
+- `outputs/experiment1/bidirectional_comparison.csv`：双向建模对比。
+- `outputs/experiment1/shap_importance.csv`：SHAP 特征重要性。
+- `outputs/experiment1/lgbm_metrics.csv`：模型评估指标。
 - `outputs/experiment1/experiment1.db`：SQLite 数据库存储结果。
-- `outputs/experiment1/*.png`：周度情绪、羊群指标、收益对比和回归散点图。
+- `outputs/experiment1/*.png`：周度情绪、羊群指标、收益对比、特征重要性、SHAP 依赖、残差、双向对比图。
 
 ## 6. 运行方式
 

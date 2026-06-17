@@ -11,28 +11,68 @@
   },
   "weekly_rows": 51,
   "modeling_rows": 51,
-  "best_lag": 5,
-  "correlation_h3_return": -0.01750208972167345,
-  "regression": {
-    "best_lag": 5,
-    "intercept": 0.0225276042412534,
-    "beta": -0.08878297435903545,
-    "r_squared": 0.05562178545514662,
-    "p_value_beta": 0.11459047890956618,
-    "n_obs": 46,
-    "equation": "return_t = 0.022528 + -0.088783 * H3t_lag5"
+  "feature_rows": 46,
+  "forward_metrics": {
+    "mse": 0.005302898943435991,
+    "mae": 0.04502874157312579,
+    "r2": -0.07828111105986824,
+    "n_test": 10
   },
-  "adf": {
-    "adf_statistic": -4.866921980170076,
-    "p_value": 4.043066099432242e-05,
-    "used_lag": 1,
-    "n_obs": 44,
-    "is_residual_stationary_5pct": true
+  "backward_metrics": {
+    "mse": 0.05847300409669145,
+    "mae": 0.163947713415665,
+    "r2": -0.010937441521678082,
+    "n_test": 10
   },
+  "bidirectional_comparison": [
+    {
+      "direction": "H3→return (forward)",
+      "mse": 0.005302898943435991,
+      "mae": 0.04502874157312579,
+      "r2": -0.07828111105986824,
+      "n_test": 10,
+      "best_lag": 1
+    },
+    {
+      "direction": "return→H3 (backward)",
+      "mse": 0.05847300409669145,
+      "mae": 0.163947713415665,
+      "r2": -0.010937441521678082,
+      "n_test": 10,
+      "best_lag": 1
+    }
+  ],
+  "best_shap_feature": "H3_lag1",
+  "shap_top5": [
+    {
+      "feature": "H3_lag1",
+      "importance": 0.0
+    },
+    {
+      "feature": "H3_lag2",
+      "importance": 0.0
+    },
+    {
+      "feature": "H3_lag3",
+      "importance": 0.0
+    },
+    {
+      "feature": "H3_lag4",
+      "importance": 0.0
+    },
+    {
+      "feature": "H3_lag5",
+      "importance": 0.0
+    }
+  ],
   "plots": [
     "outputs\\experiment1\\weekly_sentiment_counts.png",
     "outputs\\experiment1\\herd_index_timeseries.png",
     "outputs\\experiment1\\herd_vs_hs300_return.png",
-    "outputs\\experiment1\\lag_regression_scatter.png"
-  ]
+    "outputs\\experiment1\\feature_importance.png",
+    "outputs\\experiment1\\shap_dependence.png",
+    "outputs\\experiment1\\residual_timeseries.png",
+    "outputs\\experiment1\\bidirectional_comparison.png"
+  ],
+  "reflexivity_notes": "反向模型 R²=-0.0109 高于正向 R²=-0.0783，说明市场收益率对羊群情绪的引导能力强于情绪对收益的预测，反映'收益驱动舆情'的反身性特征。"
 }

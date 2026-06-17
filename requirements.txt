@@ -13,3 +13,4 @@ pyarrow
 xlrd
 transformers
 torch
+shap

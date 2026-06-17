@@ -1,2 +1,0 @@
-﻿best_lag,intercept,beta,r_squared,p_value_beta,n_obs,equation
-5,0.0225276042412534,-0.08878297435903545,0.05562178545514662,0.11459047890956618,46,return_t = 0.022528 + -0.088783 * H3t_lag5
