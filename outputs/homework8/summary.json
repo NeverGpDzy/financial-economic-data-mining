@@ -1,0 +1,41 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "period": {
+    "start": "2015-01-01",
+    "end": "2018-01-01"
+  },
+  "asset_count": 8,
+  "aligned_rows": 732,
+  "pair_count": 28,
+  "significant_pair_count": 4,
+  "best_pair": {
+    "rank": 1,
+    "y_asset": "中国石油（601857.SH）",
+    "x_asset": "兴蓉环境（000598.SZ）",
+    "alpha": 2.0514757476088374,
+    "beta": 1.0297955115832842,
+    "r_squared": 0.7252723751830343,
+    "residual_mean": -9.95924654221124e-15,
+    "residual_std": 0.948372034088678,
+    "adf_stat": -4.739151933150629,
+    "p_value": 7.09993144916462e-05,
+    "critical_5pct": -2.8655458544300387,
+    "is_cointegrated": true,
+    "conclusion": "协整显著",
+    "ols_alpha": 2.0514757476088374,
+    "ols_beta": 1.0297955115832842,
+    "ols_r_squared": 0.7252723751830343,
+    "trade_signal_count_long_y": 7,
+    "trade_signal_count_short_y": 40,
+    "exit_zone_count": 172
+  },
+  "plots": {
+    "pair_pvalues": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework8\\cointegration_pvalues_top12.png",
+    "best_pair_prices": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework8\\best_pair_standardized_prices.png",
+    "spread": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework8\\best_pair_spread.png",
+    "zscore": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework8\\best_pair_zscore_signals.png"
+  }
+}

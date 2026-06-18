@@ -1,0 +1,21 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "period": {
+    "start": "2024-01-01",
+    "end": "2024-12-31"
+  },
+  "stock_count": 5,
+  "price_stationary_count": 0,
+  "return_stationary_count": 5,
+  "plot_paths": {
+    "000598.SZ_兴蓉环境": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework7\\000598.SZ_兴蓉环境_price_return.png",
+    "600036.SH_招商银行": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework7\\600036.SH_招商银行_price_return.png",
+    "600519.SH_贵州茅台": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework7\\600519.SH_贵州茅台_price_return.png",
+    "601398.SH_工商银行": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework7\\601398.SH_工商银行_price_return.png",
+    "601857.SH_中国石油": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework7\\601857.SH_中国石油_price_return.png"
+  },
+  "pvalue_plot": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework7\\adf_pvalue_comparison.png"
+}

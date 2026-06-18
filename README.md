@@ -18,6 +18,8 @@
 | `homework3/` | 二因子模型与 PEG 策略 | `python homework3/main.py` | 市场因子 + PE_TTM 扩展检验，PEG 策略回测 |
 | `homework4/` | 多因子量化选股 | `python homework4/main.py` | SMB、PE 倒数、质量因子、IC/IR、LGBM 和 TopN 回测 |
 | `homework4b/` | 中频短线量化全流程 | `python -m homework4b.main` | 4 因子质检、LGBM 赋权、Top5 日频调仓样本外回测 |
+| `homework7/` | 统计套利之平稳性检验 | `python -m homework7.main` | 5只股票收盘价与对数收益率ADF检验、图表、报告和PPT |
+| `homework8/` | 协整检验与配对交易 | `python -m homework8.main` | EG两步法协整检验、最优配对、价差z-score交易信号 |
 
 ## 技术栈
 
@@ -108,6 +110,12 @@ python homework4/main.py --refresh
 
 # 作业4B
 python -m homework4b.main
+
+# 作业7
+python -m homework7.main --build-ppt
+
+# 作业8
+python -m homework8.main --build-ppt
 ```
 
 作业 4B 依赖教师提供的本地 Parquet 数据，默认路径在 `homework4b/config.py` 中配置为：

@@ -86,6 +86,30 @@ outputs/homework6/**
 !outputs/homework6/**/*.pdf
 !outputs/homework6/**/*.md
 !outputs/homework6/**/*.docx
+
+# Homework 7 final submission materials
+!outputs/homework7/
+outputs/homework7/**
+!outputs/homework7/**/
+!outputs/homework7/**/*.csv
+!outputs/homework7/**/*.png
+!outputs/homework7/**/*.json
+!outputs/homework7/**/*.pptx
+!outputs/homework7/**/*.pdf
+!outputs/homework7/**/*.md
+outputs/homework7/ppt_review_images*/
+
+# Homework 8 final submission materials
+!outputs/homework8/
+outputs/homework8/**
+!outputs/homework8/**/
+!outputs/homework8/**/*.csv
+!outputs/homework8/**/*.png
+!outputs/homework8/**/*.json
+!outputs/homework8/**/*.pptx
+!outputs/homework8/**/*.pdf
+!outputs/homework8/**/*.md
+outputs/homework8/ppt_review_images*/
 !outputs/experiment1/**/*.csv
 !outputs/experiment1/**/*.png
 !outputs/experiment1/**/*.json
@@ -109,6 +133,10 @@ credentials.json
 !outputs/homework5/**/*.pdf
 !outputs/homework6/**/*.pptx
 !outputs/homework6/**/*.pdf
+!outputs/homework7/**/*.pptx
+!outputs/homework7/**/*.pdf
+!outputs/homework8/**/*.pptx
+!outputs/homework8/**/*.pdf
 
 # OS
 .DS_Store
