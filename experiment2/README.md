@@ -37,7 +37,8 @@ python -m experiment1.main
 - `indicator_distribution.png`：H1、H2、H3分布图。
 - `weekly_herd_index_table.png`：羊群效应指标时序表截图。
 - `core_program_snippet.png`：系统主要程序截图。
-- `experiment2_report.md`：实验报告。
-- `202331060205_丁致宇_实验二_羊群效应指数构建报告.docx`：Word版标准实验报告。
+- `experiment2_report.md`：实验摘要。
+- `report/experiment2_latex/main.tex`：LaTeX版标准实验报告源码。
+- `202331060205_丁致宇_实验二_羊群效应指数构建报告.pdf`：LaTeX编译后的可提交PDF报告。
 - `AI交互记录.md`、`AI代码审查与修复表.md`：AI辅助与审查材料。
 - `实验二代码附录.md`：本实验代码附录。

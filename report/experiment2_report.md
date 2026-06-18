@@ -79,7 +79,8 @@ H3 排名前10的交易周：
 - `outputs/experiment2/weekly_sentiment_input.csv`：实验一周度情绪输入副本。
 - `outputs/experiment2/weekly_herd_index.csv`：实验二核心输出，包含 `trade_date`、`H1t`、`H2t`、`H3t`。
 - `outputs/experiment2/experiment2.db`：SQLite 数据库，包含输入、指标、质量检查、描述统计和高羊群周表。
-- `outputs/experiment2/202331060205_丁致宇_实验二_羊群效应指数构建报告.docx`：可提交的 Word 版标准实验报告。
+- `report/experiment2_latex/main.tex`：LaTeX 版标准实验报告源码。
+- `outputs/experiment2/202331060205_丁致宇_实验二_羊群效应指数构建报告.pdf`：LaTeX 编译后的可提交 PDF 报告。
 - `outputs/experiment2/*.png`：指标时序、情绪对比、Top周和分布图。
 - `outputs/experiment2/AI交互记录.md`、`outputs/experiment2/AI代码审查与修复表.md`：AI辅助材料。
 - `outputs/experiment2/实验二代码附录.md`：本次实验二代码附录。
