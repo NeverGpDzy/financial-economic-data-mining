@@ -110,6 +110,18 @@ outputs/homework8/**
 !outputs/homework8/**/*.pdf
 !outputs/homework8/**/*.md
 outputs/homework8/ppt_review_images*/
+
+# Experiment 2 final materials
+!outputs/experiment2/
+outputs/experiment2/**
+!outputs/experiment2/**/
+!outputs/experiment2/**/*.csv
+!outputs/experiment2/**/*.png
+!outputs/experiment2/**/*.json
+!outputs/experiment2/**/*.md
+!outputs/experiment2/**/*.db
+!outputs/experiment2/**/*.docx
+
 !outputs/experiment1/**/*.csv
 !outputs/experiment1/**/*.png
 !outputs/experiment1/**/*.json

@@ -1,0 +1,7 @@
+﻿check,result,detail
+关键字段无缺失,True,trade_date、H1t、H2t、H3t 均应完整。
+日期单调递增,True,输出时序按交易周末日期升序排列。
+P_t 范围合法,True,P_t 为正面新闻占正负情绪新闻比例。
+H2t 范围合法,True,H2t 为分歧度，越接近 0 表示越一边倒。
+任务书公式H2原文列范围合法,True,H2t_formula_raw 保留任务书公式4的直接转写结果。
+H3t 范围合法,True,H3t 由 Min-Max 后的 H1 强度和 H2 反向强度相乘。

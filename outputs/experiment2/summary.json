@@ -1,0 +1,45 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "audit": {
+    "input_rows": 51,
+    "dropped_zero_denominator": 0,
+    "dropped_no_history_baseline": 1,
+    "outlier_removed": 0,
+    "output_rows": 50,
+    "date_start": "2014-10-20",
+    "date_end": "2015-10-21",
+    "h3_min": 0.0,
+    "h3_max": 0.8646874107907507,
+    "h3_mean": 0.1681437066237163,
+    "h3_std": 0.17834085951953593
+  },
+  "quality_passed": 6,
+  "quality_total": 6,
+  "top_herd_week": {
+    "rank": 1,
+    "trade_date": "2015-09-16",
+    "P_t": 0.9032258064516129,
+    "E_P_t": 0.754242904545617,
+    "H1t": 0.14898290190599583,
+    "H2t": 0.19354838709677424,
+    "H2t_formula_raw": 0.8064516129032258,
+    "H2t_strength": 0.8646874107907507,
+    "H3t_formula_raw": 0.8646874107907506,
+    "H3t": 0.8646874107907507,
+    "WeekPositive": 112,
+    "WeekNegative": 12,
+    "NewsCount": 553
+  },
+  "plots": {
+    "herd_timeseries": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\herd_index_timeseries.png",
+    "sentiment_vs_herd": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\sentiment_vs_herd.png",
+    "top_herd_weeks": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\top_herd_weeks.png",
+    "indicator_distribution": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\indicator_distribution.png",
+    "herd_table_snapshot": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\weekly_herd_index_table.png",
+    "core_code_snippet": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\core_program_snippet.png"
+  },
+  "docx_report": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment2\\202331060205_丁致宇_实验二_羊群效应指数构建报告.docx"
+}
