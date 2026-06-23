@@ -1,0 +1,111 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "period": {
+    "data_start": "2015-01-01",
+    "initial_train_end": "2018-01-01",
+    "backtest_end": "2024-12-31"
+  },
+  "initial_calibration": {
+    "mu": 2.2455530846702167,
+    "sigma": 0.07333063388968197,
+    "adf_stat": -4.315634373815144,
+    "p_value": 0.00041732055511136773,
+    "critical_5pct": -2.865507363200066,
+    "is_stationary": true,
+    "obs": 732
+  },
+  "metrics": [
+    {
+      "strategy": "方案A：静态中枢无风控",
+      "start": "2018-01-02",
+      "end": "2024-12-31",
+      "trading_days": 1699,
+      "cumulative_return": 0.35407569431179997,
+      "annual_return": 0.04601307975084645,
+      "max_drawdown": -0.18901696653146904,
+      "annual_volatility": 0.12469299611593368,
+      "sharpe": 0.4227753458377073,
+      "trade_count": 13,
+      "active_days": 1442,
+      "cash_days": 257,
+      "risk_off_days": 0
+    },
+    {
+      "strategy": "方案B1：半年窗口ADF风控（教师指令版）",
+      "start": "2018-01-02",
+      "end": "2024-12-31",
+      "trading_days": 1699,
+      "cumulative_return": 0.0,
+      "annual_return": 0.0,
+      "max_drawdown": 0.0,
+      "annual_volatility": 0.0,
+      "sharpe": 0.0,
+      "trade_count": 0,
+      "active_days": 0,
+      "cash_days": 1699,
+      "risk_off_days": 1699
+    },
+    {
+      "strategy": "方案B2：滚动ADF风控（防未来函数）",
+      "start": "2018-01-02",
+      "end": "2024-12-31",
+      "trading_days": 1699,
+      "cumulative_return": -0.0503406555570447,
+      "annual_return": -0.007636353222301495,
+      "max_drawdown": -0.09457275841053858,
+      "annual_volatility": 0.034447495441861674,
+      "sharpe": -0.20522111938300674,
+      "trade_count": 2,
+      "active_days": 119,
+      "cash_days": 1580,
+      "risk_off_days": 1456
+    },
+    {
+      "strategy": "方案C1：贵州茅台长期持有",
+      "start": "2018-01-02",
+      "end": "2024-12-31",
+      "trading_days": 1699,
+      "cumulative_return": 1.1652340697591814,
+      "annual_return": 0.12148182456363443,
+      "max_drawdown": -0.5151864667435593,
+      "annual_volatility": 0.30624509296632474,
+      "sharpe": 0.5269187093386333,
+      "trade_count": 1,
+      "active_days": 1699,
+      "cash_days": 0,
+      "risk_off_days": 0
+    },
+    {
+      "strategy": "方案C2：泸州老窖长期持有",
+      "start": "2018-01-02",
+      "end": "2024-12-31",
+      "trading_days": 1699,
+      "cumulative_return": 0.9033140772271286,
+      "annual_return": 0.100226541961141,
+      "max_drawdown": -0.6814548234020186,
+      "annual_volatility": 0.4317440005603564,
+      "sharpe": 0.4360580632820246,
+      "trade_count": 1,
+      "active_days": 1699,
+      "cash_days": 0,
+      "risk_off_days": 0
+    }
+  ],
+  "dynamic_window_count": 14,
+  "dynamic_pass_window_count": 0,
+  "dynamic_causal_window_count": 14,
+  "dynamic_causal_pass_window_count": 2,
+  "plots": {
+    "price_and_spread": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\price_and_spread.png",
+    "static_thresholds": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\static_thresholds.png",
+    "dynamic_thresholds": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\dynamic_thresholds.png",
+    "dynamic_causal_thresholds": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\dynamic_causal_thresholds.png",
+    "nav_comparison": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\strategy_nav_comparison.png",
+    "drawdown_comparison": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\drawdown_comparison.png",
+    "dynamic_adf_pvalues": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\dynamic_adf_pvalues.png",
+    "dynamic_causal_adf_pvalues": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\homework9\\dynamic_causal_adf_pvalues.png"
+  }
+}

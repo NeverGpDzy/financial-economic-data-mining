@@ -111,6 +111,18 @@ outputs/homework8/**
 !outputs/homework8/**/*.md
 outputs/homework8/ppt_review_images*/
 
+# Homework 9 final submission materials
+!outputs/homework9/
+outputs/homework9/**
+!outputs/homework9/**/
+!outputs/homework9/**/*.csv
+!outputs/homework9/**/*.png
+!outputs/homework9/**/*.json
+!outputs/homework9/**/*.pptx
+!outputs/homework9/**/*.pdf
+!outputs/homework9/**/*.md
+outputs/homework9/ppt_review_images*/
+
 # Experiment 2 final materials
 !outputs/experiment2/
 outputs/experiment2/**
@@ -149,6 +161,8 @@ credentials.json
 !outputs/homework7/**/*.pdf
 !outputs/homework8/**/*.pptx
 !outputs/homework8/**/*.pdf
+!outputs/homework9/**/*.pptx
+!outputs/homework9/**/*.pdf
 
 # OS
 .DS_Store
@@ -157,3 +171,4 @@ Thumbs.db
 # Local QA previews and obsolete drafts
 outputs/homework4b/ppt_preview*/
 outputs/homework4b/*before_polish.pptx
+outputs/homework9/ppt_review_images*/

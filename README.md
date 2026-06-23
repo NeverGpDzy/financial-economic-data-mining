@@ -9,7 +9,7 @@
 
 ## 仓库概览
 
-本项目围绕金融市场数据完成数据获取、特征工程、统计建模、机器学习、量化回测和可视化展示，包含课程作业 1 至 8、实验一和实验二。
+本项目围绕金融市场数据完成数据获取、特征工程、统计建模、机器学习、量化回测和可视化展示，包含课程作业 1 至 9、实验一和实验二。
 
 | 模块 | 主题 | 主要入口 | 说明 |
 | --- | --- | --- | --- |
@@ -22,6 +22,7 @@
 | `homework6/` | 价值投资与内涵价值 | `python -m homework6.main` | FCFF、价值因子、分组检验、LGBM因子重要性和回测 |
 | `homework7/` | 统计套利之平稳性检验 | `python -m homework7.main` | 5只股票收盘价与对数收益率ADF检验、图表、报告和PPT |
 | `homework8/` | 协整检验与配对交易 | `python -m homework8.main` | EG两步法协整检验、最优配对、价差z-score交易信号 |
+| `homework9/` | 协整套利模型维护与风控 | `python -m homework9.main` | 茅台-老窖对数价差、静态中枢、ADF动态风控和长期持有对照 |
 | `experiment1/` | 金融非结构化数据预处理 | `python -m experiment1.main` | 金融新闻情绪标注、周度情绪表、羊群指标和LGBM预测链路 |
 | `experiment2/` | 市场情绪羊群效应指数构建 | `python -m experiment2.main` | 基于实验一周度情绪输出构建 H1、H2、H3 羊群效应指数 |
 
@@ -46,7 +47,8 @@ Code/
 │   ├── homework2/
 │   ├── homework3/
 │   ├── homework4/
-│   └── homework4b/             # 4B清洗后数据说明；大CSV本地保留不入库
+│   ├── homework4b/             # 4B清洗后数据说明；大CSV本地保留不入库
+│   └── homework9/              # 作业9原始要求、数据说明和行情缓存
 ├── homework1/                  # 作业1代码与说明
 ├── homework2/                  # 作业2代码与说明
 ├── homework3/                  # 作业3代码
@@ -54,6 +56,7 @@ Code/
 ├── homework4b/                 # 作业4B代码与README
 ├── homework5/                  # 作业5代码与README
 ├── homework6/                  # 作业6代码与README
+├── homework9/                  # 作业9代码、README与原始要求提取
 ├── experiment1/                # 实验一代码与指导书提取
 ├── experiment2/                # 实验二代码与指导书提取
 ├── outputs/                    # 图表、模型、PPT、PDF、指标表
@@ -131,6 +134,9 @@ python -m homework7.main --build-ppt
 # 作业8
 python -m homework8.main --build-ppt
 
+# 作业9
+python -m homework9.main --build-ppt
+
 # 实验一
 python -m experiment1.main
 
@@ -177,11 +183,13 @@ python -m experiment2.main
 | `report/homework2_report.md` | 作业2报告 |
 | `report/homework3_report.md` | 作业3报告 |
 | `report/homework4_report.md` | 作业4报告 |
+| `report/homework9_report.md` | 作业9模型维护与风控对比报告 |
 | `report/build_homework*_ppt*.py` | 各作业PPT生成脚本 |
 | `outputs/homework4b/202331060205_丁致宇_作业4B.pptx` | 作业4B最终PPT |
 | `outputs/homework4b/202331060205_丁致宇_作业4B.pdf` | 作业4B最终PDF |
 | `outputs/homework4b/202331060205_丁致宇_AI代码审查与修复表.docx` | 作业4B AI代码审查表 |
 | `outputs/homework4b/202331060205_丁致宇_AI交互记录.docx` | 作业4B AI交互记录，含4张截图 |
+| `outputs/homework9/202331060205_丁致宇_作业9_模型维护与风控对比实验.pptx` | 作业9最终PPT |
 
 ## 风险提示
 
