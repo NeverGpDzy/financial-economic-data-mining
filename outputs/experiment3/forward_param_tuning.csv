@@ -1,0 +1,5 @@
+﻿n_estimators,learning_rate,num_leaves,max_depth,reg_lambda,validation_mae,selected
+80,0.05,5,2,0.1,0.05968409587752986,True
+120,0.05,7,3,0.1,0.0623084362650772,False
+160,0.03,7,3,0.3,0.06202738676133865,False
+120,0.08,9,3,0.2,0.06301236869416299,False

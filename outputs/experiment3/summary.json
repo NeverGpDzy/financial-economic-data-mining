@@ -1,0 +1,312 @@
+{
+  "student": {
+    "name": "丁致宇",
+    "id": "202331060205"
+  },
+  "alignment_audit": {
+    "herd_rows": 50,
+    "hs300_weekly_rows": 621,
+    "aligned_rows": 50,
+    "aligned_start": "2014-10-20",
+    "aligned_end": "2015-10-25",
+    "missing_cells_after_align": 0,
+    "max_herd_rows_per_natural_week": 1
+  },
+  "feature_cols": [
+    "H3_lag1",
+    "H3_lag2",
+    "H3_lag3",
+    "H3_lag4",
+    "H3_lag5",
+    "H3_roll_mean_3",
+    "H3_roll_std_3",
+    "H3_roll_mean_5",
+    "H3_roll_std_5",
+    "P_t_lag1",
+    "P_t_lag2",
+    "P_t_lag3",
+    "P_t_roll_mean_3",
+    "month_1",
+    "month_2",
+    "month_3",
+    "month_4",
+    "month_5",
+    "month_6",
+    "month_7",
+    "month_8",
+    "month_9",
+    "month_10",
+    "month_11",
+    "month_12",
+    "quarter_1",
+    "quarter_2",
+    "quarter_3",
+    "quarter_4"
+  ],
+  "feature_rows": 45,
+  "quality_checks": [
+    {
+      "check": "自然周对齐后无关键缺失",
+      "result": true,
+      "detail": "H3、P_t、Ret_t 均完整。"
+    },
+    {
+      "check": "自然周日期单调递增",
+      "result": true,
+      "detail": "所有样本按自然周结束日升序排列。"
+    },
+    {
+      "check": "特征工程后无缺失",
+      "result": true,
+      "detail": "滞后与滚动特征首部缺失已剔除。"
+    },
+    {
+      "check": "未使用同期H3作为正向特征",
+      "result": true,
+      "detail": "正向预测只使用 H3 的历史滞后和历史滚动统计。"
+    },
+    {
+      "check": "样本外测试集存在",
+      "result": true,
+      "detail": "可建模样本 45 行，按时间顺序切分训练和测试。"
+    }
+  ],
+  "forward_metrics": {
+    "mse": 0.0035030526025529884,
+    "mae": 0.03637607520955175,
+    "rmse": 0.05918659140846842,
+    "r2": -0.5398137507258087,
+    "ic": 0.15256428831468236,
+    "direction_acc": 0.5555555555555556,
+    "n_test": 9,
+    "n_train": 36,
+    "best_params": {
+      "n_estimators": 80,
+      "learning_rate": 0.05,
+      "num_leaves": 5,
+      "max_depth": 2,
+      "reg_lambda": 0.1
+    }
+  },
+  "backward_metrics": {
+    "mse": 0.059075069463964396,
+    "mae": 0.1395548273069399,
+    "rmse": 0.24305363495320204,
+    "r2": 0.0850035460798303,
+    "ic": 0.7333333333333334,
+    "direction_acc": 0.7777777777777778,
+    "n_test": 9,
+    "n_train": 36,
+    "best_params": {
+      "n_estimators": 80,
+      "learning_rate": 0.05,
+      "num_leaves": 5,
+      "max_depth": 2,
+      "reg_lambda": 0.1
+    }
+  },
+  "forward_best_params": {
+    "n_estimators": 80,
+    "learning_rate": 0.05,
+    "num_leaves": 5,
+    "max_depth": 2,
+    "reg_lambda": 0.1
+  },
+  "backward_best_params": {
+    "n_estimators": 80,
+    "learning_rate": 0.05,
+    "num_leaves": 5,
+    "max_depth": 2,
+    "reg_lambda": 0.1
+  },
+  "best_gain_lag": "H3_lag1",
+  "best_shap_lag": "H3_lag5",
+  "best_shap_feature": "H3_lag5",
+  "best_backward_lag": "Ret_lag1",
+  "contribution": {
+    "total_gain": 0.6501048735080985,
+    "h3_gain": 0.26548057069885544,
+    "h3_gain_share": 0.40836575992157714,
+    "sentiment_gain": 0.37518619681941345,
+    "sentiment_gain_share": 0.5771164193783569,
+    "time_gain": 0.009438105989829637,
+    "time_gain_share": 0.014517820700065963
+  },
+  "gain_top10": [
+    {
+      "feature": "P_t_roll_mean_3",
+      "gain": 0.1830757879652083,
+      "split": 15,
+      "gain_share": 0.2816096224249081
+    },
+    {
+      "feature": "H3_roll_std_3",
+      "gain": 0.1262097805738449,
+      "split": 14,
+      "gain_share": 0.19413757028583895
+    },
+    {
+      "feature": "P_t_lag2",
+      "gain": 0.08044408359273802,
+      "split": 27,
+      "gain_share": 0.12374016388870512
+    },
+    {
+      "feature": "P_t_lag3",
+      "gain": 0.0720302972040372,
+      "split": 25,
+      "gain_share": 0.11079796528111997
+    },
+    {
+      "feature": "H3_lag1",
+      "gain": 0.0629258054686943,
+      "split": 25,
+      "gain_share": 0.09679331448345221
+    },
+    {
+      "feature": "P_t_lag1",
+      "gain": 0.03963602805742994,
+      "split": 21,
+      "gain_share": 0.060968667783623656
+    },
+    {
+      "feature": "H3_roll_std_5",
+      "gain": 0.03472598174994346,
+      "split": 21,
+      "gain_share": 0.05341596896906029
+    },
+    {
+      "feature": "H3_lag2",
+      "gain": 0.014846747682895511,
+      "split": 18,
+      "gain_share": 0.022837465596557416
+    },
+    {
+      "feature": "H3_lag5",
+      "gain": 0.009787618153495714,
+      "split": 8,
+      "gain_share": 0.015055444978715095
+    },
+    {
+      "feature": "quarter_4",
+      "gain": 0.008300025961943902,
+      "split": 15,
+      "gain_share": 0.012767210799628786
+    }
+  ],
+  "shap_top10": [
+    {
+      "feature": "H3_roll_std_3",
+      "mean_abs_shap": 0.01050261653143469,
+      "shap_share": 0.2124835947196416
+    },
+    {
+      "feature": "P_t_lag2",
+      "mean_abs_shap": 0.00823392974694059,
+      "shap_share": 0.16658467783360342
+    },
+    {
+      "feature": "H3_roll_std_5",
+      "mean_abs_shap": 0.006993875730024454,
+      "shap_share": 0.1414965358099245
+    },
+    {
+      "feature": "P_t_lag1",
+      "mean_abs_shap": 0.0055536960191931274,
+      "shap_share": 0.11235955255591133
+    },
+    {
+      "feature": "P_t_lag3",
+      "mean_abs_shap": 0.003417400026593503,
+      "shap_share": 0.06913909882096715
+    },
+    {
+      "feature": "P_t_roll_mean_3",
+      "mean_abs_shap": 0.003104538174992468,
+      "shap_share": 0.06280943700004281
+    },
+    {
+      "feature": "H3_lag5",
+      "mean_abs_shap": 0.002752440576562366,
+      "shap_share": 0.05568597750948089
+    },
+    {
+      "feature": "quarter_4",
+      "mean_abs_shap": 0.0024966456885033295,
+      "shap_share": 0.050510865463543164
+    },
+    {
+      "feature": "H3_lag1",
+      "mean_abs_shap": 0.0016221123875947358,
+      "shap_share": 0.03281775261657646
+    },
+    {
+      "feature": "H3_lag3",
+      "mean_abs_shap": 0.0013778391163278446,
+      "shap_share": 0.02787574006024209
+    }
+  ],
+  "bidirectional_comparison": [
+    {
+      "direction_short": "H3->收益",
+      "direction": "H3滞后特征 -> 沪深300周收益率",
+      "mse": 0.0035030526025529884,
+      "mae": 0.03637607520955175,
+      "rmse": 0.05918659140846842,
+      "r2": -0.5398137507258087,
+      "ic": 0.15256428831468236,
+      "direction_acc": 0.5555555555555556,
+      "n_train": 36,
+      "n_test": 9,
+      "best_lag": "H3_lag1"
+    },
+    {
+      "direction_short": "收益->H3",
+      "direction": "沪深300滞后收益率 -> H3",
+      "mse": 0.059075069463964396,
+      "mae": 0.1395548273069399,
+      "rmse": 0.24305363495320204,
+      "r2": 0.0850035460798303,
+      "ic": 0.7333333333333334,
+      "direction_acc": 0.7777777777777778,
+      "n_train": 36,
+      "n_test": 9,
+      "best_lag": "Ret_lag1"
+    }
+  ],
+  "residual_diagnostics": [
+    {
+      "metric": "residual_mean",
+      "value": -0.03292983492674546
+    },
+    {
+      "metric": "residual_std",
+      "value": 0.04918006277192296
+    },
+    {
+      "metric": "residual_min",
+      "value": -0.14469700110892725
+    },
+    {
+      "metric": "residual_max",
+      "value": 0.014041091642278406
+    },
+    {
+      "metric": "residual_abs_mean",
+      "value": 0.03637607520955175
+    }
+  ],
+  "stronger_direction": "反向模型 R²=0.0850 高于正向模型 R²=-0.5398，收益对后续舆情羊群强度的反馈更强",
+  "plots": {
+    "market_herd_timeseries": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\market_herd_timeseries.png",
+    "prediction_vs_actual": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\prediction_vs_actual.png",
+    "residual_timeseries": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\residual_timeseries.png",
+    "residual_distribution": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\residual_distribution.png",
+    "feature_importance_gain": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\feature_importance_gain.png",
+    "shap_feature_importance": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\shap_feature_importance.png",
+    "shap_dependence": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\shap_dependence_best_lag.png",
+    "bidirectional_comparison": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\bidirectional_comparison.png",
+    "modeling_dataset_table": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\modeling_dataset_table.png",
+    "core_program_snippet": "D:\\A西南石油\\金融与经济数据挖掘\\Code\\outputs\\experiment3\\core_program_snippet.png"
+  }
+}
