@@ -26,6 +26,9 @@ data/**/*.csv
 data/**/*.pkl
 !data/**/.gitkeep
 
+# 期末大作业配套数据为教师提供、不可由代码再生、体积小，纳入版本控制以保证可复现
+!data/final_project/*.csv
+
 # Homework 6 extracted data is reproducible from data/homework6/original/*.zip
 data/homework6/raw/**
 
@@ -126,6 +129,15 @@ outputs/homework11/**
 !outputs/homework11/**/*.png
 !outputs/homework11/**/*.json
 !outputs/homework11/**/*.md
+
+# 期末大作业(final_project) final submission materials
+!outputs/final_project/
+outputs/final_project/**
+!outputs/final_project/**/
+!outputs/final_project/**/*.csv
+!outputs/final_project/**/*.png
+!outputs/final_project/**/*.json
+!outputs/final_project/**/*.md
 
 # Experiment 2 final materials
 !outputs/experiment2/

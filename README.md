@@ -9,7 +9,7 @@
 
 ## 仓库概览
 
-本项目围绕金融市场数据完成数据获取、特征工程、统计建模、机器学习、量化回测和可视化展示，包含课程作业 1 至 9、实验一、实验二和实验三。
+本项目围绕金融市场数据完成数据获取、特征工程、统计建模、机器学习、量化回测和可视化展示，包含课程作业 1 至 9、实验一、实验二、实验三，以及期末大作业（行业轮动多因子策略）。
 
 | 模块 | 主题 | 主要入口 | 说明 |
 | --- | --- | --- | --- |
@@ -26,6 +26,7 @@
 | `experiment1/` | 金融非结构化数据预处理 | `python -m experiment1.main` | 金融新闻情绪标注、周度情绪表、羊群指标和LGBM预测链路 |
 | `experiment2/` | 市场情绪羊群效应指数构建 | `python -m experiment2.main` | 基于实验一周度情绪输出构建 H1、H2、H3 羊群效应指数 |
 | `experiment3/` | LGBM非线性预测与羊群效应因子分析 | `python -m experiment3.main --build-pdf` | 自然周对齐、滞后特征、LightGBM、SHAP、残差诊断和双向传导验证 |
+| `final_project/` | 期末大作业：行业轮动多因子策略 | `python -m final_project.main --build-docx` | 申万31行业4因子、Z-Score、IC/IR+共线性双质检、LGBM赋权、月度轮动回测、风控与鲁棒性 |
 
 ## 技术栈
 
@@ -63,6 +64,7 @@ Code/
 ├── experiment1/                # 实验一代码与指导书提取
 ├── experiment2/                # 实验二代码与指导书提取
 ├── experiment3/                # 实验三代码与指导书提取
+├── final_project/             # 期末大作业：行业轮动多因子策略代码与要求提取
 ├── outputs/                    # 图表、模型、PPT、PDF、指标表
 ├── report/                     # 报告与PPT生成脚本
 ├── requirements.txt
@@ -149,6 +151,9 @@ python -m experiment2.main
 
 # 实验三
 python -m experiment3.main --build-pdf
+
+# 期末大作业
+python -m final_project.main --build-docx
 ```
 
 作业 4B 依赖教师提供的本地 Parquet 数据，默认路径在 `homework4b/config.py` 中配置为：
