@@ -123,6 +123,28 @@ outputs/homework9/**
 !outputs/homework9/**/*.md
 outputs/homework9/ppt_review_images*/
 
+# Homework 10 final submission materials
+!outputs/homework10/
+outputs/homework10/**
+!outputs/homework10/**/
+!outputs/homework10/**/*.csv
+!outputs/homework10/**/*.png
+!outputs/homework10/**/*.json
+!outputs/homework10/**/*.pptx
+!outputs/homework10/**/*.pdf
+!outputs/homework10/**/*.md
+
+# Homework 11 final submission materials
+!outputs/homework11/
+outputs/homework11/**
+!outputs/homework11/**/
+!outputs/homework11/**/*.csv
+!outputs/homework11/**/*.png
+!outputs/homework11/**/*.json
+!outputs/homework11/**/*.pptx
+!outputs/homework11/**/*.pdf
+!outputs/homework11/**/*.md
+
 # Experiment 2 final materials
 !outputs/experiment2/
 outputs/experiment2/**
@@ -134,11 +156,25 @@ outputs/experiment2/**
 !outputs/experiment2/**/*.db
 !outputs/experiment2/**/*.pdf
 
+# Experiment 3 final materials
+!outputs/experiment3/
+outputs/experiment3/**
+!outputs/experiment3/**/
+!outputs/experiment3/**/*.csv
+!outputs/experiment3/**/*.png
+!outputs/experiment3/**/*.json
+!outputs/experiment3/**/*.md
+!outputs/experiment3/**/*.db
+!outputs/experiment3/**/*.pdf
+
 !outputs/experiment1/**/*.csv
 !outputs/experiment1/**/*.png
 !outputs/experiment1/**/*.json
 !outputs/experiment1/**/*.md
 !outputs/experiment1/**/*.db
+
+# LaTeX build artifacts
+report/**/build/
 
 # Credentials & secrets
 .env
