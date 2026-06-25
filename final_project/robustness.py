@@ -29,6 +29,8 @@ def _metrics_row(r: BacktestResult) -> dict:
         "benchmark_annualized": M["benchmark_annualized"],
         "excess_cumulative": M["excess_cumulative"],
         "monthly_win_rate_vs_bench": M["monthly_win_rate_vs_bench"],
+        "total_turnover": M["total_turnover"],
+        "total_cost": M["total_cost"],
         "target_return_ok": M["target_return_ok"],
         "target_dd_ok": M["target_dd_ok"],
     }
@@ -66,7 +68,8 @@ def run_method_sensitivity(panel: pd.DataFrame, market: MarketData,
     s, e = cfg.ROBUSTNESS_YEARS["out_sample_2025"]
     # 综合得分
     p_comp = panel.copy()
-    p_comp["score"] = composite_score(p_comp, model_result["importances"], directions)
+    p_comp["score"] = composite_score(p_comp, model_result["importances"], directions,
+                                       model_result["factor_cols"])
     sub_comp = p_comp[(p_comp["fwd_date"] >= pd.Timestamp(s)) & (p_comp["fwd_date"] <= pd.Timestamp(e))]
     r_comp = backtest(sub_comp, market, top_n=cfg.TOP_N_DEFAULT, name="composite_score")
     # LGBM直接预测
@@ -94,14 +97,16 @@ def run_risk_control_spectrum(base_result: BacktestResult) -> dict:
             r = base_result
         else:
             r = apply_drawdown_control(base_result, trigger_dd=trig,
-                                       de_risk_exposure=exp, recover_dd=rec)
+                                       de_risk_exposure=exp, recover_dd=rec,
+                                       cost_rate=cfg.COST_RATE)
             r.name = name
         results[name] = r
         row = _metrics_row(r)
         row["config"] = name
         rows.append(row)
     table = pd.DataFrame(rows)[["config", "annualized_return", "max_drawdown", "sharpe",
-                                "excess_cumulative", "target_return_ok", "target_dd_ok"]]
+                                "excess_cumulative", "total_turnover", "total_cost",
+                                "target_return_ok", "target_dd_ok"]]
     return {"results": results, "table": table}
 
 

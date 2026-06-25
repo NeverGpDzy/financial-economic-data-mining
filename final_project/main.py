@@ -58,14 +58,16 @@ def main(with_docx: bool = False):
 
     # 3. LGBM 赋权
     print("[3/7] LGBM 因子赋权与打分...")
-    model = train_lgbm(train)
-    directions = ic_directions(train)
+    factor_cols = qc["kept_factors"] or cfg.FACTOR_Z
+    print(f"  质检后用于建模的因子：{', '.join(factor_cols)}")
+    model = train_lgbm(train, factor_cols=factor_cols)
+    directions = ic_directions(train, factor_cols=factor_cols)
     _save_csv(model["importances"].reset_index().rename(columns={"index": "factor"}), out_dir / "lgbm_importances.csv")
     _save_csv(model["cv_metrics"], out_dir / "lgbm_cv_metrics.csv")
     _save_csv((model["importances"] * directions).reset_index().rename(columns={"index": "factor", 0: "signed_weight"}),
               out_dir / "lgbm_signed_weights.csv")
     panel = panel.copy()
-    panel["score"] = composite_score(panel, model["importances"], directions)
+    panel["score"] = composite_score(panel, model["importances"], directions, factor_cols=factor_cols)
     _save_csv(panel, out_dir / "factor_panel.csv", index=False)
 
     # 4. 主回测（2025 样本外）
@@ -87,6 +89,20 @@ def main(with_docx: bool = False):
     _save_csv(rob["time"]["table"], out_dir / "robustness_time.csv", index=False)
     _save_csv(rob["method"]["table"], out_dir / "robustness_method.csv", index=False)
     _save_csv(rob["risk_control"]["table"], out_dir / "risk_control_spectrum.csv", index=False)
+
+    rc_table = rob["risk_control"]["table"]
+    compliant = rc_table[rc_table["target_return_ok"] & rc_table["target_dd_ok"]]
+    if not compliant.empty:
+        selected_rc_name = compliant.sort_values("annualized_return", ascending=False).iloc[0]["config"]
+    else:
+        selected_rc_name = rc_table.sort_values("sharpe", ascending=False).iloc[0]["config"]
+    final_strategy = rob["risk_control"]["results"][selected_rc_name]
+    rob["risk_control"]["selected"] = selected_rc_name
+    rob["risk_control"]["final_strategy"] = final_strategy
+    _save_csv(final_strategy.nav.rename("nav").to_frame(), out_dir / "nav_final_risk_control.csv")
+    _save_csv(final_strategy.monthly_returns, out_dir / "monthly_final_risk_control.csv", index=False)
+    _save_csv(pd.DataFrame([final_strategy.metrics]).T.rename(columns={0: "value"}),
+              out_dir / "metrics_final_risk_control.csv")
 
     # 6. 图表
     print("[6/7] 生成图表...")

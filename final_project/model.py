@@ -2,8 +2,8 @@
 
 - 训练：样本内(2023-2024)每月末31行业截面，X=四因子Z-Score，y=下月前瞻收益；
 - 赋权：LGBM 特征重要度即各因子权重；
-- 打分：LGBM 预测值作为行业综合得分，月末排序选TopN；
-- 评估：按月分组的 GroupKFold 交叉验证，报告 R²/RMSE/预测秩IC，杜绝时间泄漏。
+- 打分：LGBM 特征重要度 × IC方向，形成可解释的综合得分，月末排序选TopN；
+- 评估：按月份做时间顺序扩展窗口验证，训练月份严格早于验证月份。
 """
 
 from __future__ import annotations
@@ -12,9 +12,36 @@ import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
 from scipy import stats
-from sklearn.model_selection import GroupKFold
 
 from . import config as cfg
+
+
+def _time_ordered_month_splits(signal_dates: pd.Series, n_splits: int):
+    """按月份生成扩展窗口切分，保证训练月严格早于验证月。"""
+    dates = pd.to_datetime(pd.Series(signal_dates)).reset_index(drop=True)
+    months = pd.Index(sorted(dates.drop_duplicates()))
+    if len(months) < 4:
+        return []
+
+    n_splits = min(n_splits, len(months) - 1)
+    min_train_months = max(3, len(months) // (n_splits + 1))
+    val_months = months[min_train_months:]
+    if len(val_months) == 0:
+        return []
+
+    val_chunks = np.array_split(val_months, min(n_splits, len(val_months)))
+    splits = []
+    for chunk in val_chunks:
+        if len(chunk) == 0:
+            continue
+        train_months = months[months < chunk[0]]
+        tr_mask = dates.isin(train_months)
+        va_mask = dates.isin(chunk)
+        tr_idx = np.flatnonzero(tr_mask.to_numpy())
+        va_idx = np.flatnonzero(va_mask.to_numpy())
+        if len(tr_idx) and len(va_idx):
+            splits.append((tr_idx, va_idx, train_months, pd.Index(chunk)))
+    return splits
 
 
 def train_lgbm(train_panel: pd.DataFrame, factor_cols: list[str] | None = None) -> dict:
@@ -24,14 +51,12 @@ def train_lgbm(train_panel: pd.DataFrame, factor_cols: list[str] | None = None) 
 
     X = train_panel[factor_cols].values
     y = train_panel["fwd_return"].values
-    groups = train_panel["signal_date"].values
 
-    # ---- 交叉验证（按月分组，防止同月截面泄漏）----
-    n_splits = min(cfg.LGBM_CV_FOLDS, train_panel["signal_date"].nunique())
+    # ---- 交叉验证（扩展窗口，防止未来月份泄漏到验证月之前）----
     cv_rows = []
     cv_preds = np.full(len(train_panel), np.nan)
-    gkf = GroupKFold(n_splits=n_splits)
-    for tr_idx, va_idx in gkf.split(X, y, groups):
+    splits = _time_ordered_month_splits(train_panel["signal_date"], cfg.LGBM_CV_FOLDS)
+    for tr_idx, va_idx, train_months, val_months in splits:
         model_cv = LGBMRegressor(**cfg.LGBM_PARAMS)
         model_cv.fit(X[tr_idx], y[tr_idx])
         pred_va = model_cv.predict(X[va_idx])
@@ -49,6 +74,10 @@ def train_lgbm(train_panel: pd.DataFrame, factor_cols: list[str] | None = None) 
             "fold": len(cv_rows) + 1,
             "n_train": len(tr_idx),
             "n_val": len(va_idx),
+            "train_start": train_months.min(),
+            "train_end": train_months.max(),
+            "val_start": val_months.min(),
+            "val_end": val_months.max(),
             "rmse": float(np.sqrt(np.mean((pred_va - y[va_idx]) ** 2))),
             "r2": float(1 - np.sum((y[va_idx] - pred_va) ** 2) / np.sum((y[va_idx] - y[va_idx].mean()) ** 2)),
             "rank_ic": float(ic_mean),

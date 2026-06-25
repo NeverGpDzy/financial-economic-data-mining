@@ -1,0 +1,174 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{thesis-style}[2026/06/17 SWPU course report formatting]
+
+\RequirePackage{iftex}
+\ifXeTeX\else
+  \ifLuaTeX\else
+    \PackageError{thesis-style}{XeLaTeX or LuaLaTeX required}{}%
+  \fi
+\fi
+
+\RequirePackage{geometry}
+\RequirePackage{graphicx}
+\RequirePackage{booktabs}
+\RequirePackage{longtable}
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{float}
+\RequirePackage{xcolor}
+\RequirePackage{enumitem}
+\RequirePackage{caption}
+\RequirePackage{fancyhdr}
+\RequirePackage{xurl}
+\RequirePackage{fvextra}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\geometry{
+  paper      = a4paper,
+  vmargin    = 2.54cm,
+  hmargin    = 3.17cm,
+  headheight = 0.75cm,
+  headsep    = 0.29cm,
+  footskip   = 0.79cm,
+}
+
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{Courier New}[Scale=MatchLowercase]
+\setCJKmainfont{SimSun}[AutoFakeBold=3, ItalicFont=KaiTi]
+\setCJKsansfont{SimHei}[AutoFakeBold=3]
+\setCJKmonofont{FangSong}
+\setCJKfamilyfont{zhkai}{KaiTi}
+\newcommand{\kaiti}{\CJKfamily{zhkai}}
+
+\renewcommand\normalsize{%
+  \@setfontsize\normalsize{12bp}{20bp}%
+  \abovedisplayskip 12bp \@plus3bp \@minus7bp%
+  \abovedisplayshortskip \z@ \@plus3bp%
+  \belowdisplayshortskip 6.5bp \@plus3.5bp \@minus3bp%
+  \belowdisplayskip \abovedisplayskip
+  \let\@listi\@listI
+}
+\normalsize
+
+\setlength{\parskip}{0pt}
+\raggedbottom
+\setcounter{secnumdepth}{5}
+
+\ctexset{
+  autoindent = 2,
+  section = {
+    format     = \centering\fontsize{14bp}{23.33bp}\selectfont\heiti,
+    aftername  = \hspace{\ccwd},
+    beforeskip = 24bp,
+    afterskip  = 6bp,
+  },
+  subsection = {
+    format     = \fontsize{13bp}{21.67bp}\selectfont\heiti,
+    aftername  = \hspace{\ccwd},
+    indent     = 2\ccwd,
+    beforeskip = 12bp,
+    afterskip  = 6bp,
+  },
+  subsubsection = {
+    format     = \fontsize{12bp}{20bp}\selectfont\heiti,
+    aftername  = \hspace{\ccwd},
+    indent     = 2\ccwd,
+    beforeskip = 12bp,
+    afterskip  = 6bp,
+  },
+}
+
+\captionsetup{
+  font           = small,
+  labelfont      = bf,
+  labelsep       = quad,
+  skip           = 6bp,
+  figureposition = bottom,
+  tableposition  = top,
+}
+\setlength{\floatsep}{6bp}
+\setlength{\textfloatsep}{6bp}
+\setlength{\intextsep}{6bp}
+
+\newcommand{\headermark}[1]{\def\ustcheadertext{#1}}
+\def\ustcheadertext{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\fontsize{10.5bp}{12bp}\selectfont\ustcheadertext}
+\fancyfoot[C]{\fontsize{10.5bp}{12bp}\selectfont\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyhead[C]{\fontsize{10.5bp}{12bp}\selectfont\ustcheadertext}%
+  \fancyfoot[C]{\fontsize{10.5bp}{12bp}\selectfont\thepage}%
+  \renewcommand{\headrulewidth}{0.4pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
+
+\renewcommand{\@dotsep}{4}
+\setlist{nosep}
+\DefineVerbatimEnvironment{CodeBlock}{Verbatim}{fontsize=\scriptsize,breaklines,breakanywhere,frame=single,rulecolor=\color{gray!55}}
+\newcommand{\CodeInput}[1]{%
+  \VerbatimInput[fontsize=\scriptsize,baselinestretch=0.92,breaklines,breakanywhere,frame=single,rulecolor=\color{gray!55}]{#1}%
+}
+
+\RequirePackage{hyperref}
+\hypersetup{hidelinks}
+\urlstyle{tt}
+
+\newcommand{\reporttitle}[1]{\gdef\@reporttitle{#1}}
+\newcommand{\reportsubtitle}[1]{\gdef\@reportsubtitle{#1}}
+\newcommand{\studentid}[1]{\gdef\@studentid{#1}}
+\newcommand{\major}[1]{\gdef\@major{#1}}
+\newcommand{\phone}[1]{\gdef\@phone{#1}}
+\def\@major{}
+\def\@phone{}
+
+\renewcommand{\maketitle}{%
+  \clearpage
+  \begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \vspace*{1.1cm}
+    {\fontsize{18bp}{28bp}\selectfont\heiti 西南石油大学\par}
+    \vspace{1.35cm}
+    {\fontsize{26bp}{38bp}\selectfont\heiti\@reporttitle\par}
+    \vspace{0.65cm}
+    {\fontsize{17bp}{28bp}\selectfont\heiti\@reportsubtitle\par}
+    \vspace{1.35cm}
+    {\fontsize{14bp}{23bp}\selectfont
+      \begin{tabular}{>{\heiti}r@{\hspace{0.8em}}l}
+        姓名 & \@author \\
+        学号 & \@studentid \\
+        专业 & \@major \\
+        电话 & \@phone \\
+      \end{tabular}\par}
+    \vfill
+    {\fontsize{14bp}{23bp}\selectfont\@date\par}
+    \vspace*{1.2cm}
+  \end{titlepage}
+  \clearpage
+  \setcounter{page}{1}
+}
+
+\newenvironment{ustcabstract}{%
+  \clearpage
+  \vspace*{1cm}
+  \begin{center}
+    {\heiti\fontsize{14bp}{20bp}\selectfont 摘\quad 要}
+  \end{center}
+  \vspace{0.5cm}
+}{%
+  \par\vspace{0.5cm}
+}
+
+\newcommand{\keywords}[1]{%
+  \par\noindent\textbf{关键词：}#1
+}
+
+\renewcommand{\arraystretch}{1.12}

@@ -54,6 +54,7 @@ _COL_CN = {
     "max_drawdown": "最大回撤", "sharpe": "夏普",
     "benchmark_annualized": "基准年化", "excess_cumulative": "超额(累计)",
     "monthly_win_rate_vs_bench": "月度跑赢胜率",
+    "total_turnover": "总换手", "total_cost": "总成本",
     "target_return_ok": "达标收益", "target_dd_ok": "达标回撤",
     "beat_hs300": "跑赢基准",
 }
@@ -61,7 +62,7 @@ _COL_CN = {
 
 def _disp(df: pd.DataFrame, pct_cols=("cumulative_return", "annualized_return",
             "max_drawdown", "benchmark_annualized", "excess_cumulative",
-            "monthly_win_rate_vs_bench")) -> pd.DataFrame:
+            "monthly_win_rate_vs_bench", "total_cost")) -> pd.DataFrame:
     """将鲁棒性结果表转为中文展示表：列名中文化、比率列转百分比。"""
     out = df.copy()
     # 百分比化
@@ -99,6 +100,43 @@ def _metrics_table(r: BacktestResult) -> str:
     return md
 
 
+def _ai_review_rows() -> list[tuple[str, str, str, str]]:
+    """AI 代码审核表条目，供 Markdown 与 Word 复用。"""
+    return [
+        ("data_loader.py / factors.py", "数据加载、四因子计算、前瞻收益对齐",
+         "已核查月末因子仅使用历史行情；按 fwd_date 划分训练/回测，避免 2024-12 信号的 2025-01 收益进入训练集。",
+         "已修复并复核"),
+        ("quality.py / main.py", "IC/IR + 共线性双质检",
+         "原质检结果仅输出报告，未进入 LGBM 训练路径；若未来出现剔除因子，模型仍会误用全部因子。",
+         "已修复：main.py 使用 qc['kept_factors'] 作为 train_lgbm、ic_directions、composite_score 的 factor_cols。"),
+        ("model.py", "LGBM 训练与交叉验证",
+         "原 GroupKFold 只防同月截面泄漏，不保证训练月份早于验证月份，报告中的“防时间泄漏”表述不严谨。",
+         "已修复：改为按 signal_date 月份递进的扩展窗口验证，训练月严格早于验证月。"),
+        ("backtest.py / robustness.py", "回撤触发减仓风控",
+         "原风控减仓只缩放收益，未扣除降仓/恢复仓产生的额外换手成本，达标版本偏乐观。",
+         "已修复：暴露变化按 cost_rate 计入 risk_control_turnover / risk_control_cost，并汇总到月度成本。"),
+        ("main.py / report.py", "提交材料与报告生成",
+         "原 AI 审核表和交互记录末尾字符串未拼接导致截断，且 Word 报告未包含 AI 审核/交互记录。",
+         "已修复：补全字符串拼接，并将 AI 审核表、交互记录写入 Markdown 与 Word 报告。"),
+        ("backtest.py / report.py", "交易执行口径",
+         "配套行业行情无 open 字段，无法严格模拟“次日开盘成交”。",
+         "已说明：采用月末收盘到次月末收盘的收盘价代理口径，并在报告中明确数据限制。"),
+    ]
+
+
+def _ai_interaction_items() -> list[tuple[str, str]]:
+    """AI 交互记录摘要条目，供 Markdown 与 Word 复用。"""
+    return [
+        ("需求理解与数据导入", "读取期末大作业 docx 要求与三份配套 CSV，确认任务为申万一级行业轮动多因子策略全流程。"),
+        ("数据与因子核查", "核对 31 行业、787 个交易日、PB 与行情代码一致；确认 60/20 日动量、月末 PB、20 日成交额占比和 Z-Score 标准化口径。"),
+        ("未来函数修复", "发现按 signal_date 划分会把 2024-12 信号的 2025-01 前瞻收益泄漏到训练集，改为按 fwd_date 划分。"),
+        ("因子质检修复", "发现 kept_factors 未进入建模路径，修复为质检结果驱动 LGBM 训练与综合打分。"),
+        ("验证方法修复", "发现 GroupKFold 不满足时间序列验证要求，改为训练月早于验证月的扩展窗口交叉验证。"),
+        ("风控成本修复", "发现回撤减仓未计入额外换手成本，补充 risk_control_turnover 与 risk_control_cost，并输出最终风控版指标。"),
+        ("报告与提交修复", "补全 AI 审核/交互记录文本，将其写入 Word 报告，并填写老师提供的 AI 代码审查与修复表。"),
+    ]
+
+
 def build_report_md(ctx: dict) -> str:
     qc = ctx["qc"]
     qc_oos = ctx["qc_oos"]
@@ -112,6 +150,7 @@ def build_report_md(ctx: dict) -> str:
     imp = model["importances"]
     cv = model["cv_metrics"]
     ics = qc["ic_summary"]
+    factor_cols = model["factor_cols"]
     signed = (imp * directions)
     L = []
 
@@ -181,15 +220,16 @@ def build_report_md(ctx: dict) -> str:
 
     # 2.3 LGBM
     L.append("### 2.3 LGBM 因子赋权与截面打分（模块2）\n")
-    L.append("**模型设计**：LGBM 回归，X=四因子截面 Z-Score，y=下月前瞻收益；样本内 713 条；小模型防过拟合"
+    L.append(f"**模型设计**：LGBM 回归，X=质检后保留的 {len(factor_cols)} 个因子截面 Z-Score，y=下月前瞻收益；"
+             "样本内 713 条；小模型防过拟合"
              f"（num_leaves={cfg.LGBM_PARAMS['num_leaves']}, max_depth={cfg.LGBM_PARAMS['max_depth']}, "
              f"min_child_samples={cfg.LGBM_PARAMS['min_child_samples']}, 带 L1/L2 正则）。\n")
-    L.append(f"**交叉验证**（按月分组 GroupKFold={model['cv_metrics'].shape[0]} 折，防同月截面泄漏）："
+    L.append(f"**交叉验证**（按月时间顺序扩展窗口 {model['cv_metrics'].shape[0]} 折，训练月份严格早于验证月份）："
              f"平均 R²={cv['r2'].mean():.3f}（负值，说明样本内因子线性预测力弱，符合 IC 结论），"
              f"CV 预测秩 IC={model['cv_pred_rank_ic']:.3f}。\n")
     L.append("**因子赋权结果**（LGBM 特征重要度归一化）：\n")
     L.append("| 因子 | 重要度(权重) | IC方向 | 定向后权重 |\n| --- | ---: | ---: | ---: |\n")
-    for f in cfg.FACTOR_Z:
+    for f in factor_cols:
         L.append(f"| {cfg.FACTOR_LABELS[f.replace('_z','')]} | {imp[f]:.4f} | {directions[f]:+.0f} | {signed[f]:+.4f} |\n")
     L.append("\n![LGBM赋权](lgbm_importances.png)\n")
     L.append("**打分方法**：综合得分 score = Σ(重要度_k × 方向_k × z_k)，方向取样本内 IC 符号（PB 取负，"
@@ -230,10 +270,11 @@ def build_report_md(ctx: dict) -> str:
     rc = rob["risk_control"]["table"]
     rc_meet = rc[(rc["target_return_ok"]) & (rc["target_dd_ok"])]
     if len(rc_meet):
-        row = rc_meet.iloc[0]
+        selected = rob["risk_control"].get("selected")
+        row = rc[rc["config"].eq(selected)].iloc[0] if selected in set(rc["config"]) else rc_meet.iloc[0]
         L.append(f"实证表明：采用 `{row['config']}` 风控规则可将年化收益压至 {pct(row['annualized_return'])}、"
                  f"最大回撤压至 {pct(row['max_drawdown'])}，**同时满足 12%-18% 收益与 ≤10% 回撤双目标**，"
-                 f"但代价是在强势年份牺牲基准超额（超额 {pct(row['excess_cumulative'])}）。"
+                 f"总成本为 {pct(row['total_cost'])}，但代价是在强势年份牺牲基准超额（超额 {pct(row['excess_cumulative'])}）。"
                  "这揭示平衡型产品的根本权衡：严守风控红线需让渡部分进攻性。生产中可结合市场状态动态切换激进/保守模式。\n")
 
     # 2.6 鲁棒性
@@ -279,10 +320,14 @@ def build_report_md(ctx: dict) -> str:
              "比硬凑一个“高 IC”因子更扎实。\n")
     L.append("3. **收益与风控的根本权衡**：激进组合跑赢基准却破回撤红线，加风控守稳回撤却让渡超额收益。"
              "平衡型产品的“平衡”二字，本质是在进攻与防守间动态再平衡，而非静态参数。\n")
-    L.append("4. **工程严谨性**：用前瞻收益月份划分样本杜绝未来函数、月末收盘执行对齐信号、按月分组 CV 防泄漏、"
+    L.append("4. **工程严谨性**：用前瞻收益月份划分样本杜绝未来函数、月末收盘执行对齐信号、时间顺序扩展窗口 CV、"
              "换手计入成本——这些细节决定了回测可信度，是课程“金融数据挖掘全链路”训练的核心收获。\n")
     L.append("5. **AI 协作**：全程借助 AI 辅助编程与代码审核，但因子口径、样本划分、达标判断等关键决策均由本人基于"
-             "课程知识独立完成并核验，AI 审核表与交互记录随附。\n")
+             "课程知识独立完成并核验，AI 审核表与交互记录见第四部分。\n")
+
+    L.append("## 四、AI代码审核与交互记录\n")
+    L.append(build_ai_review_md().replace("# AI 代码审核与修复表", "### 4.1 AI代码审核与修复表", 1))
+    L.append(build_ai_interaction_md().replace("# AI 交互记录", "### 4.2 AI交互记录", 1))
 
     L.append("\n---\n\n> 风险提示：本策略仅用于课程学习与方法实验，回测结果依赖历史数据与模型参数，"
              "不代表未来收益，不构成任何投资建议。\n")
@@ -292,24 +337,14 @@ def build_report_md(ctx: dict) -> str:
 
 def build_ai_review_md() -> str:
     """生成 AI 代码审核表（Markdown）。"""
-    rows = [
-        ("config.py", "参数集中配置，路径/区间/阈值清晰", "无", "通过"),
-        ("industry_codes.py", "31 个申万一级行业代码-名称映射", "核对该映射与数据 ts_code 完全一致", "通过"),
-        ("data_loader.py", "三份 CSV 对齐为日频面板、月末交易日", "确认 31 行业×787 日无缺失、月末日期正确", "通过"),
-        ("factors.py", "四因子口径 + 截面Z-Score + 前瞻收益", "原按 signal_date 划分会泄漏 2025-01 收益进训练集；改为按 fwd_date 划分", "已修复：按前瞻收益月份划分样本，杜绝未来函数"),
-        ("quality.py", "IC/IR + 共线性双质检", "原 select_factors 以 |IR|<0.1 过激剔除 4 因子中 3 个，破坏规定因子体系", "已修复：仅按共线性阈值(0.85)剔除，弱因子保留供LGBM组合并标注"),
-        ("model.py", "LGBM 训练/CV/赋权/综合得分", "GroupKFold 按月分组防泄漏；综合得分用 IC 方向定向", "通过"),
-        ("backtest.py", "月度轮动回测引擎 + 风控减仓", "确认月末收盘执行、|Δ权重|成本、单行业30%上限、回撤减仓无未来函数", "通过"),
-        ("robustness.py", "参数/时间/方法敏感性 + 风控谱系", "核验 Top3 触发 30% 上限后留现金逻辑", "通过"),
-        ("viz.py / report.py", "图表与报告生成", "数值由结果对象实时读取，报告与代码输出一致", "通过"),
-    ]
+    rows = _ai_review_rows()
     md = "# AI 代码审核与修复表\n\n"
     md += f"学号：{cfg.STUDENT_ID}　姓名：{cfg.STUDENT_NAME}　作业：期末大作业-行业轮动因子\n\n"
     md += "| 模块 | 功能 | 审核要点 | 审核结论与修复 |\n| --- | --- | --- | --- |\n"
     for r in rows:
         md += "| " + " | ".join(r) + " |\n"
-    md += "\n**审核方式**：AI（编程辅助）+ 人工逐模块核验。关键修复 2 处（样本划分未来函数、因子剔除过激），"
-    "均经人工复核后落地。\n"
+    md += ("\n**审核方式**：AI（编程辅助）+ 人工逐模块核验。关键修复覆盖样本划分、因子质检接入、"
+           "时序交叉验证、风控成本和提交材料完整性，均经重新运行复核后落地。\n")
     return md
 
 
@@ -318,29 +353,12 @@ def build_ai_interaction_md() -> str:
     md = "# AI 交互记录\n\n"
     md += f"学号：{cfg.STUDENT_ID}　姓名：{cfg.STUDENT_NAME}　作业：期末大作业-行业轮动因子\n\n"
     md += "工具：Claude Code（AI 辅助编程）。以下为关键交互节点摘要（完整对话见会话记录）。\n\n"
-    items = [
-        ("需求理解与数据导入", "向 AI 提供 docx 作业要求与三份配套 CSV，要求原封不动提取要求并完成全流程。"
-         "AI 提取要求为 assignment.md，复制数据到 data/final_project/。"),
-        ("数据探查", "AI 探查确认 31 行业×787 日无缺失，PB 与行情代码完全一致，区间覆盖 2022-10 至 2025-12，"
-         "足够 2023 首次月末 60 日回溯。"),
-        ("因子口径确认", "与 AI 核对四因子口径：60/20 日累计涨跌幅、月末 PB、20 日成交额占比；确认 Z-Score 截面标准化、"
-         "PB 由模型按 IC 自动定向。"),
-        ("样本划分修复（关键）", "AI 初版按 signal_date 划分样本，被人工指出 2024-12 信号的前瞻收益在 2025-01 会泄漏进训练集；"
-         "AI 修复为按 fwd_date 划分，训练集 23 月、2025/2024 回测各 12 月，无未来函数。"),
-        ("因子剔除修复（关键）", "AI 初版 select_factors 以 |IR|<0.1 剔除 3 个因子，人工指出破坏规定四因子体系；"
-         "AI 改为仅按共线性 0.85 剔除，弱因子保留并标注，交 LGBM 非线性组合。"),
-        ("LGBM 赋权设计", "讨论“直接预测 vs 重要度加权”。AI 采用 LGBM 重要度×IC 方向的线性综合得分为打分主法"
-         "（更稳定可解释、忠实“赋权→打分”），直接预测作敏感性对照。"),
-        ("回测达标判断", "主回测 29.4% 收益超区间、-16.3% 回撤破红线。人工要求如实报告并给风控方案；"
-         "AI 实现回撤触发减仓谱系，证实在 -5%触发、40% 暴露下同时满足双目标。"),
-        ("鲁棒性结论", "AI 完成 Top3/Top5、2024/2025、综合/直接三组对比，得出“机制依赖、Top5 更稳、双法均跑赢基准”结论。"),
-        ("代码审核", "AI 逐模块自审 + 人工复核，输出 AI 代码审核表，记录 2 处关键修复。"),
-    ]
+    items = _ai_interaction_items()
     md += "| 节点 | 内容 |\n| --- | --- |\n"
     for k, v in items:
         md += f"| {k} | {v} |\n"
-    md += "\n**说明**：因子口径、样本划分、达标判断、风控权衡等关键决策由本人基于课程知识独立完成并核验；"
-    "AI 承担代码实现、口径核对与文档生成辅助。\n"
+    md += ("\n**说明**：因子口径、样本划分、达标判断、风控权衡等关键决策由本人基于课程知识独立完成并核验；"
+           "AI 承担代码实现、口径核对、审查记录整理与文档生成辅助。\n")
     return md
 
 
@@ -379,6 +397,7 @@ def build_docx(ctx: dict, out_path: Path):
     rob = ctx["robustness"]
     imp = model["importances"]
     ics = qc["ic_summary"]
+    factor_cols = model["factor_cols"]
     out_dir: Path = ctx["output_dir"]
 
     doc = Document()
@@ -430,13 +449,13 @@ def build_docx(ctx: dict, out_path: Path):
     img("ic_ir.png")
 
     doc.add_heading("2.3 LGBM 因子赋权与截面打分", level=2)
-    doc.add_paragraph(f"LGBM回归，X=四因子Z-Score，y=下月前瞻收益，713条样本，小模型防过拟合。"
-                      f"按月分组GroupKFold={model['cv_metrics'].shape[0]}折：平均R²={model['cv_metrics']['r2'].mean():.3f}，CV预测秩IC={model['cv_pred_rank_ic']:.3f}。")
+    doc.add_paragraph(f"LGBM回归，X=质检后保留的{len(factor_cols)}个因子Z-Score，y=下月前瞻收益，713条样本，小模型防过拟合。"
+                      f"按月时间顺序扩展窗口{model['cv_metrics'].shape[0]}折：平均R²={model['cv_metrics']['r2'].mean():.3f}，CV预测秩IC={model['cv_pred_rank_ic']:.3f}。")
     w_df = pd.DataFrame({
-        "因子": [cfg.FACTOR_LABELS[f.replace("_z", "")] for f in cfg.FACTOR_Z],
-        "重要度": [imp[f] for f in cfg.FACTOR_Z],
-        "IC方向": [int(directions[f]) for f in cfg.FACTOR_Z],
-        "定向后权重": [(imp * directions)[f] for f in cfg.FACTOR_Z],
+        "因子": [cfg.FACTOR_LABELS[f.replace("_z", "")] for f in factor_cols],
+        "重要度": [imp[f] for f in factor_cols],
+        "IC方向": [int(directions[f]) for f in factor_cols],
+        "定向后权重": [(imp * directions)[f] for f in factor_cols],
     })
     _doc_add_table(doc, w_df, floatfmt=".4f")
     doc.add_paragraph("打分：综合得分=Σ(重要度×IC方向×z)；月末按score降序选Top5等权。LGBM直接预测作方法敏感性对照。")
@@ -473,9 +492,10 @@ def build_docx(ctx: dict, out_path: Path):
     rc = rob["risk_control"]["table"]
     rc_meet = rc[(rc["target_return_ok"]) & (rc["target_dd_ok"])]
     if len(rc_meet):
-        row = rc_meet.iloc[0]
+        selected = rob["risk_control"].get("selected")
+        row = rc[rc["config"].eq(selected)].iloc[0] if selected in set(rc["config"]) else rc_meet.iloc[0]
         doc.add_paragraph(f"实证：{row['config']}规则可将年化压至{pct(row['annualized_return'])}、回撤压至{pct(row['max_drawdown'])}，"
-                          f"同时满足双目标，代价是强势年牺牲超额{pct(row['excess_cumulative'])}。揭示平衡型产品进攻与防守的权衡。")
+                          f"同时满足双目标，总成本{pct(row['total_cost'])}，代价是强势年牺牲超额{pct(row['excess_cumulative'])}。揭示平衡型产品进攻与防守的权衡。")
 
     doc.add_heading("2.6 鲁棒性与迭代优化", level=2)
     doc.add_paragraph("参数敏感性(Top3 vs Top5)：")
@@ -500,10 +520,17 @@ def build_docx(ctx: dict, out_path: Path):
         "因子有效性是动态的：样本内弱、样本外短期动量复活、中期反转，机制切换是最大风险，须IC月度跟踪与模型重训练。",
         "双质检的价值在诚实：IC弱不丢人，关键是数据说话、不掩盖；保留全因子交LGBM非线性组合比硬凑高IC更扎实。",
         "收益与风控的根本权衡：激进跑赢基准却破回撤红线，加风控守稳却让渡超额；平衡型产品本质是攻守动态再平衡。",
-        "工程严谨性：按前瞻收益月份划分样本杜绝未来函数、月末收盘执行对齐信号、按月分组CV防泄漏、换手计入成本，决定回测可信度。",
+        "工程严谨性：按前瞻收益月份划分样本杜绝未来函数、月末收盘执行对齐信号、时间顺序扩展窗口CV、换手计入成本，决定回测可信度。",
         "AI协作：全程AI辅助编程与审核，关键决策(因子口径/样本划分/达标判断)由本人基于课程知识独立完成并核验。",
     ]:
         doc.add_paragraph(t, style="List Number")
+    doc.add_heading("四、AI代码审核与交互记录", level=1)
+    doc.add_heading("4.1 AI代码审核与修复表", level=2)
+    review_df = pd.DataFrame(_ai_review_rows(), columns=["模块", "功能", "审核要点", "审核结论与修复"])
+    _doc_add_table(doc, review_df)
+    doc.add_heading("4.2 AI交互记录", level=2)
+    interaction_df = pd.DataFrame(_ai_interaction_items(), columns=["节点", "内容"])
+    _doc_add_table(doc, interaction_df)
     doc.add_paragraph("风险提示：本策略仅用于课程学习与方法实验，回测不代表未来收益，不构成投资建议。")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)

@@ -153,22 +153,30 @@ def backtest(scored_panel: pd.DataFrame, market: MarketData,
 
 
 def apply_drawdown_control(result: BacktestResult, trigger_dd: float = -0.06,
-                           de_risk_exposure: float = 0.5, recover_dd: float = -0.03) -> BacktestResult:
+                           de_risk_exposure: float = 0.5, recover_dd: float = -0.03,
+                           cost_rate: float = cfg.COST_RATE) -> BacktestResult:
     """模块4 交易风控：回撤触发减仓。
 
     当策略从净值高点的回撤 <= trigger_dd 时，将仓位降至 de_risk_exposure（余下持现金）；
     当回撤恢复到 recover_dd 之上时恢复满仓。仅使用历史净值状态，无未来函数。
+    暴露调整产生的额外换手按 cost_rate 扣费。
     返回新的风险控制后回测结果（基准不变）。
     """
     daily_ret = result.nav.pct_change().fillna(0.0)
     new_rets = []
     nav_vals = []
+    exposures = []
+    extra_turnovers = []
+    extra_costs = []
     cur = 1.0
     peak = 1.0
     de_risked = False
+    prev_exposure = 1.0
     for t, r in daily_ret.items():
         exposure = de_risk_exposure if de_risked else 1.0
-        nr = exposure * r
+        extra_turnover = abs(exposure - prev_exposure)
+        extra_cost = cost_rate * extra_turnover
+        nr = exposure * r - extra_cost
         cur *= (1.0 + nr)
         peak = max(peak, cur)
         dd = cur / peak - 1.0
@@ -178,17 +186,34 @@ def apply_drawdown_control(result: BacktestResult, trigger_dd: float = -0.06,
             de_risked = False
         new_rets.append(nr)
         nav_vals.append(cur)
+        exposures.append(exposure)
+        extra_turnovers.append(extra_turnover)
+        extra_costs.append(extra_cost)
+        prev_exposure = exposure
 
     new_nav = pd.Series(nav_vals, index=daily_ret.index, name="nav_rc")
-    new_daily = pd.DataFrame({"strategy_ret": new_rets}, index=daily_ret.index)
+    new_daily = pd.DataFrame({
+        "strategy_ret": new_rets,
+        "exposure": exposures,
+        "risk_control_turnover": extra_turnovers,
+        "risk_control_cost": extra_costs,
+    }, index=daily_ret.index)
     # 月度收益按原 holding period 聚合
     monthly = result.monthly_returns.copy()
     if not monthly.empty:
         new_monthly_ret = []
+        extra_monthly_turnover = []
+        extra_monthly_cost = []
         for _, row in monthly.iterrows():
-            seg = new_daily.loc[(new_daily.index > row["signal_date"]) & (new_daily.index <= row["fwd_date"]), "strategy_ret"]
-            new_monthly_ret.append((1.0 + seg).prod() - 1.0 if len(seg) else 0.0)
+            seg = new_daily.loc[(new_daily.index > row["signal_date"]) & (new_daily.index <= row["fwd_date"])]
+            new_monthly_ret.append((1.0 + seg["strategy_ret"]).prod() - 1.0 if len(seg) else 0.0)
+            extra_monthly_turnover.append(float(seg["risk_control_turnover"].sum()) if len(seg) else 0.0)
+            extra_monthly_cost.append(float(seg["risk_control_cost"].sum()) if len(seg) else 0.0)
         monthly["strategy_ret"] = new_monthly_ret
+        monthly["risk_control_turnover"] = extra_monthly_turnover
+        monthly["risk_control_cost"] = extra_monthly_cost
+        monthly["turnover"] = monthly["turnover"] + monthly["risk_control_turnover"]
+        monthly["cost"] = monthly["cost"] + monthly["risk_control_cost"]
     metrics = compute_metrics(new_nav, result.benchmark_nav, new_daily, monthly)
     return BacktestResult(name=result.name + "_风控", nav=new_nav, benchmark_nav=result.benchmark_nav,
                           holdings=result.holdings, monthly_returns=monthly, metrics=metrics,
