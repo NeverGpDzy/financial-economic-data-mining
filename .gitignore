@@ -57,10 +57,7 @@ outputs/homework4b/**
 !outputs/homework4b/**/*.pkl
 !outputs/homework4b/**/*.png
 !outputs/homework4b/**/*.json
-!outputs/homework4b/**/*.pptx
-!outputs/homework4b/**/*.pdf
 !outputs/homework4b/**/*.md
-!outputs/homework4b/**/*.docx
 
 # Homework 5 final submission materials
 !outputs/homework5/
@@ -69,8 +66,6 @@ outputs/homework5/**
 !outputs/homework5/**/*.csv
 !outputs/homework5/**/*.png
 !outputs/homework5/**/*.json
-!outputs/homework5/**/*.pptx
-!outputs/homework5/**/*.pdf
 !outputs/homework5/**/*.md
 outputs/homework5/ppt_preview*/
 outputs/homework5/ppt_preview_contact.jpg
@@ -82,10 +77,7 @@ outputs/homework6/**
 !outputs/homework6/**/*.csv
 !outputs/homework6/**/*.png
 !outputs/homework6/**/*.json
-!outputs/homework6/**/*.pptx
-!outputs/homework6/**/*.pdf
 !outputs/homework6/**/*.md
-!outputs/homework6/**/*.docx
 
 # Homework 7 final submission materials
 !outputs/homework7/
@@ -94,8 +86,6 @@ outputs/homework7/**
 !outputs/homework7/**/*.csv
 !outputs/homework7/**/*.png
 !outputs/homework7/**/*.json
-!outputs/homework7/**/*.pptx
-!outputs/homework7/**/*.pdf
 !outputs/homework7/**/*.md
 outputs/homework7/ppt_review_images*/
 
@@ -106,8 +96,6 @@ outputs/homework8/**
 !outputs/homework8/**/*.csv
 !outputs/homework8/**/*.png
 !outputs/homework8/**/*.json
-!outputs/homework8/**/*.pptx
-!outputs/homework8/**/*.pdf
 !outputs/homework8/**/*.md
 outputs/homework8/ppt_review_images*/
 
@@ -118,8 +106,6 @@ outputs/homework9/**
 !outputs/homework9/**/*.csv
 !outputs/homework9/**/*.png
 !outputs/homework9/**/*.json
-!outputs/homework9/**/*.pptx
-!outputs/homework9/**/*.pdf
 !outputs/homework9/**/*.md
 outputs/homework9/ppt_review_images*/
 
@@ -130,8 +116,6 @@ outputs/homework10/**
 !outputs/homework10/**/*.csv
 !outputs/homework10/**/*.png
 !outputs/homework10/**/*.json
-!outputs/homework10/**/*.pptx
-!outputs/homework10/**/*.pdf
 !outputs/homework10/**/*.md
 
 # Homework 11 final submission materials
@@ -141,8 +125,6 @@ outputs/homework11/**
 !outputs/homework11/**/*.csv
 !outputs/homework11/**/*.png
 !outputs/homework11/**/*.json
-!outputs/homework11/**/*.pptx
-!outputs/homework11/**/*.pdf
 !outputs/homework11/**/*.md
 
 # Experiment 2 final materials
@@ -154,7 +136,6 @@ outputs/experiment2/**
 !outputs/experiment2/**/*.json
 !outputs/experiment2/**/*.md
 !outputs/experiment2/**/*.db
-!outputs/experiment2/**/*.pdf
 
 # Experiment 3 final materials
 !outputs/experiment3/
@@ -165,7 +146,6 @@ outputs/experiment3/**
 !outputs/experiment3/**/*.json
 !outputs/experiment3/**/*.md
 !outputs/experiment3/**/*.db
-!outputs/experiment3/**/*.pdf
 
 !outputs/experiment1/**/*.csv
 !outputs/experiment1/**/*.png
@@ -184,21 +164,12 @@ credentials.json
 # Logs
 *.log
 
-# Presentation files
+# Office documents (keep local only)
 *.ppt
 *.pptx
-!outputs/homework4b/**/*.pptx
-!outputs/homework4b/**/*.pdf
-!outputs/homework5/**/*.pptx
-!outputs/homework5/**/*.pdf
-!outputs/homework6/**/*.pptx
-!outputs/homework6/**/*.pdf
-!outputs/homework7/**/*.pptx
-!outputs/homework7/**/*.pdf
-!outputs/homework8/**/*.pptx
-!outputs/homework8/**/*.pdf
-!outputs/homework9/**/*.pptx
-!outputs/homework9/**/*.pdf
+*.doc
+*.docx
+*.pdf
 
 # OS
 .DS_Store
