@@ -13,21 +13,23 @@
 
   \begin{itemize}
   \item
-    高（P0）：致命缺陷，直接导致策略逻辑失效/回测失真/实盘亏损，必须修复
+    高（P0）：致命缺陷，直接导致策略逻辑失效/\allowbreak{}回测失真/\allowbreak{}实盘亏损，必须修复
   \item
-    中（P1）：核心缺陷，影响策略稳定性/收益真实性，建议修复
+    中（P1）：核心缺陷，影响策略稳定性/\allowbreak{}收益真实性，建议修复
   \item
     低（P2）：优化类问题，不影响核心逻辑，可选择性修复
   \end{itemize}
 \item
-  「修复情况」选项：未修复 / 部分修复 / 已修复，需同步填写「修复说明」。
+  「修复情况」选项：未修复 /\allowbreak{} 部分修复 /\allowbreak{} 已修复，需同步填写「修复说明」。
 \end{enumerate}
 
 \textbf{一、基础信息填写区}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2629}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7371}}@{}}
+\begingroup
+\small
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.24\textwidth}L{0.70\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{项目}
@@ -46,19 +48,17 @@
 AI生成内容占比 & 82\% \\
 策略核心因子类型 & ☑ 快慢变量混合（周度情绪偏离 + 一致性强度） \\
 \end{longtable}
+\endgroup
 
 \textbf{二、量化策略AI代码核心审查与修复表（主表）}
 
 \textbf{模块1：时序逻辑与未来函数专项审查（AI高频重灾区，P0级核心）}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0745}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.3785}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0997}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0997}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0845}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0845}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1786}}@{}}
+\begingroup
+\tiny
+\setlength{\tabcolsep}{1pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.045\textwidth}L{0.190\textwidth}L{0.140\textwidth}L{0.190\textwidth}L{0.060\textwidth}L{0.060\textwidth}L{0.205\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{序号}
@@ -79,23 +79,21 @@ AI生成内容占比 & 82\% \\
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-1.1 & 无未来函数：交易信号仅使用历史数据，禁止用当日/未来数据计算当日信号 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & E(P\_t)使用过去4周滚动均值且不包含当周，避免同周信息污染基准。 & 高(P0) & 已修复 & 所有特征/信号均采用历史窗口或明确样本分割；输出报告同步说明口径。 \\
-1.2 & 时间戳严格递增：数据加载、信号计算、交易执行按时间顺序执行，无乱序访问 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 数据按日期升序排序后再计算指标、回归或回测。 & 高(P0) & 已修复 & 在数据加载和结果输出前统一排序并保存审计文件。 \\
-1.3 & 信号与交易分离：今日计算的信号，仅用于次日/下一个周期交易，无「当日信号当日成交」 & 无 & 不涉及交易执行，输出平稳可用于实验三建模的周度指标。 & 中(P1) & 已修复 & 涉及交易的作业已明确下一周期/价差信号口径；非交易类实验已在报告中说明不适用。 \\
-1.4 & 样本数据严格隔离：训练集/测试集/回测集无数据泄露，无「用未来数据优化参数」 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & E(P\_t)使用过去4周滚动均值且不包含当周，避免同周信息污染基准。 & 高(P0) & 已修复 & 训练、检验、回测或自然周样本均按时间切分，禁止随机泄露。 \\
-1.5 & 漂移测试通过：删除未来数据后，策略信号与核心逻辑保持稳定，无隐性未来函数 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 删除后续样本不会改变历史窗口内已生成的信号/指标逻辑。 & 中(P1) & 已修复 & 滚动均值、滞后特征、训练窗口均只引用当前时点之前的数据。 \\
+1.1 & 无未来函数：交易信号仅使用历史数据，禁止用当日/\allowbreak{}未来数据计算当日信号 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & E(P\_\allowbreak{}t)使用过去4周滚动均值且不包含当周，避免同周信息污染基准。 & 高(P0) & 已修复 & 所有特征/\allowbreak{}信号均采用历史窗口或明确样本分割；输出报告同步说明口径。 \\
+1.2 & 时间戳严格递增：数据加载、信号计算、交易执行按时间顺序执行，无乱序访问 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 数据按日期升序排序后再计算指标、回归或回测。 & 高(P0) & 已修复 & 在数据加载和结果输出前统一排序并保存审计文件。 \\
+1.3 & 信号与交易分离：今日计算的信号，仅用于次日/\allowbreak{}下一个周期交易，无「当日信号当日成交」 & 无 & 不涉及交易执行，输出平稳可用于实验三建模的周度指标。 & 中(P1) & 已修复 & 涉及交易的作业已明确下一周期/\allowbreak{}价差信号口径；非交易类实验已在报告中说明不适用。 \\
+1.4 & 样本数据严格隔离：训练集/\allowbreak{}测试集/\allowbreak{}回测集无数据泄露，无「用未来数据优化参数」 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & E(P\_\allowbreak{}t)使用过去4周滚动均值且不包含当周，避免同周信息污染基准。 & 高(P0) & 已修复 & 训练、检验、回测或自然周样本均按时间切分，禁止随机泄露。 \\
+1.5 & 漂移测试通过：删除未来数据后，策略信号与核心逻辑保持稳定，无隐性未来函数 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 删除后续样本不会改变历史窗口内已生成的信号/\allowbreak{}指标逻辑。 & 中(P1) & 已修复 & 滚动均值、滞后特征、训练窗口均只引用当前时点之前的数据。 \\
 \end{longtable}
+\endgroup
 
 \textbf{模块2：因子与数据处理专项审查（高频快变量专属）}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0744}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.3816}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0992}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0992}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0841}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0841}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1773}}@{}}
+\begingroup
+\tiny
+\setlength{\tabcolsep}{1pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.045\textwidth}L{0.190\textwidth}L{0.140\textwidth}L{0.190\textwidth}L{0.060\textwidth}L{0.060\textwidth}L{0.205\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{序号}
@@ -116,23 +114,21 @@ AI生成内容占比 & 82\% \\
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-2.1 & 快变量筛选合理：仅使用与策略周期匹配的日/周频快变量，无周期错配 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 变量频率与任务周期匹配：日度任务使用日度价量/收益，周度任务使用周度聚合指标。 & 中(P1) & 已修复 & 频率口径写入配置和报告，避免周期错配。 \\
-2.2 & 慢变量使用合规：慢变量仅用于风险过滤/风格筛选，不直接作为短线交易主信号 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 慢变量仅用于年度分组、风险过滤或解释，不作为不合规短线当日信号。 & 中(P1) & 已修复 & 输入为实验一weekly\_sentiment.csv，输出前做缺失和范围质量检查。 \\
-2.3 & 高频数据去噪完整：异常值剔除、滑动平均、滤波处理等，无「用单日极端数据做因子」 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 异常值、缺失值、重复文本/日期错位均已处理。 & 中(P1) & 已修复 & 输入为实验一weekly\_sentiment.csv，输出前做缺失和范围质量检查。 \\
-2.4 & 无因子共线性：相关系数\textgreater0.7的同源因子已剔除，无AI堆砌的重复逻辑因子 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 已检查重复/同源因子；多因子任务加入VIF或特征重要性审查。 & 中(P1) & 已修复 & 作业6使用VIF；其他任务通过字段定义和输出表避免重复堆砌。 \\
-2.5 & 因子经济逻辑清晰：所有因子均有明确的金融/交易逻辑支撑，无纯数学组合的无效因子 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 所有指标均有金融解释：情绪、Alpha、协整价差、FCFF或羊群效应。 & 中(P1) & 已修复 & 报告逐项说明经济逻辑和适用边界。 \\
+2.1 & 快变量筛选合理：仅使用与策略周期匹配的日/\allowbreak{}周频快变量，无周期错配 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 变量频率与任务周期匹配：日度任务使用日度价量/\allowbreak{}收益，周度任务使用周度聚合指标。 & 中(P1) & 已修复 & 频率口径写入配置和报告，避免周期错配。 \\
+2.2 & 慢变量使用合规：慢变量仅用于风险过滤/\allowbreak{}风格筛选，不直接作为短线交易主信号 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 慢变量仅用于年度分组、风险过滤或解释，不作为不合规短线当日信号。 & 中(P1) & 已修复 & 输入为实验一weekly\_\allowbreak{}sentiment.csv，输出前做缺失和范围质量检查。 \\
+2.3 & 高频数据去噪完整：异常值剔除、滑动平均、滤波处理等，无「用单日极端数据做因子」 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 异常值、缺失值、重复文本/\allowbreak{}日期错位均已处理。 & 中(P1) & 已修复 & 输入为实验一weekly\_\allowbreak{}sentiment.csv，输出前做缺失和范围质量检查。 \\
+2.4 & 无因子共线性：相关系数\textgreater0.7的同源因子已剔除，无AI堆砌的重复逻辑因子 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 已检查重复/\allowbreak{}同源因子；多因子任务加入VIF或特征重要性审查。 & 中(P1) & 已修复 & 作业6使用VIF；其他任务通过字段定义和输出表避免重复堆砌。 \\
+2.5 & 因子经济逻辑清晰：所有因子均有明确的金融/\allowbreak{}交易逻辑支撑，无纯数学组合的无效因子 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 所有指标均有金融解释：情绪、Alpha、协整价差、FCFF或羊群效应。 & 中(P1) & 已修复 & 报告逐项说明经济逻辑和适用边界。 \\
 \end{longtable}
+\endgroup
 
 \textbf{模块3：交易与风控合规专项审查（班级规则强制要求）}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0740}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.3904}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0976}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0976}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0833}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0833}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1737}}@{}}
+\begingroup
+\tiny
+\setlength{\tabcolsep}{1pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.045\textwidth}L{0.190\textwidth}L{0.140\textwidth}L{0.190\textwidth}L{0.060\textwidth}L{0.060\textwidth}L{0.205\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{序号}
@@ -154,22 +150,20 @@ AI生成内容占比 & 82\% \\
 \bottomrule\noalign{}
 \endlastfoot
 3.1 & 交易成本完整：已嵌入佣金+印花税+滑点（综合成本≥0.3\%），无零成本理想化回测 & 无 & 交易类任务已说明成本口径；非交易类实验不适用。 & 中(P1) & 已修复 & 作业6含0.1\%单边手续费；作业9按题目要求不计成本并明确说明。 \\
-3.2 & 仓位合规：单只个股仓位≤30\%，账户总仓位≤80\%，无满仓/重仓梭哈 & 无 & 持仓或分组规则已明确；非交易实验无仓位约束。 & 中(P1) & 已修复 & 等权分组/配对多空敞口在报告和CSV中记录。 \\
+3.2 & 仓位合规：单只个股仓位≤30\%，账户总仓位≤80\%，无满仓/\allowbreak{}重仓梭哈 & 无 & 持仓或分组规则已明确；非交易实验无仓位约束。 & 中(P1) & 已修复 & 等权分组/\allowbreak{}配对多空敞口在报告和CSV中记录。 \\
 3.3 & 止损机制完善：单笔交易止损≤5\%，账户总回撤控制≤15\%，有明确的风险触发规则 & 无 & 风控或检验规则已明确；非交易实验不适用止损。 & 中(P1) & 已修复 & 作业9使用ADF动态风控；其他统计实验通过检验结论控制适用范围。 \\
-3.4 & 流动性过滤：已剔除小盘股/低流动性品种，无「无法按理想价格成交」的标的 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 数据源和标的池已说明，缺失/低质量数据已过滤。 & 低(P2) & 已修复 & 输出质量检查表、summary或data\_audit记录过滤结果。 \\
-3.5 & 调仓频率合规：周调仓次数≤2次，禁止日内交易/高频刷单，符合班级规则 & 无 & 调仓频率与题目一致；非交易任务无调仓。 & 低(P2) & 已修复 & 年度调仓、半年维护或无交易均在报告中说明。 \\
+3.4 & 流动性过滤：已剔除小盘股/\allowbreak{}低流动性品种，无「无法按理想价格成交」的标的 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 数据源和标的池已说明，缺失/\allowbreak{}低质量数据已过滤。 & 低(P2) & 已修复 & 输出质量检查表、summary或data\_\allowbreak{}audit记录过滤结果。 \\
+3.5 & 调仓频率合规：周调仓次数≤2次，禁止日内交易/\allowbreak{}高频刷单，符合班级规则 & 无 & 调仓频率与题目一致；非交易任务无调仓。 & 低(P2) & 已修复 & 年度调仓、半年维护或无交易均在报告中说明。 \\
 \end{longtable}
+\endgroup
 
 \textbf{模块4：AI代码特有缺陷专项审查}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0740}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.3922}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0974}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0974}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0831}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0831}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1729}}@{}}
+\begingroup
+\tiny
+\setlength{\tabcolsep}{1pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.045\textwidth}L{0.190\textwidth}L{0.140\textwidth}L{0.190\textwidth}L{0.060\textwidth}L{0.060\textwidth}L{0.205\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{序号}
@@ -190,23 +184,21 @@ AI生成内容占比 & 82\% \\
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-4.1 & 无AI幻觉：无虚构的API/函数/库调用，所有import的依赖真实存在且版本兼容 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 依赖库均在requirements.txt中列出，不使用虚构API。 & 中(P1) & 已修复 & 主入口已运行或可打开，输出文件存在。 \\
-4.2 & 无逻辑矛盾：条件判断无冲突，交易方向明确，无「同时买入和卖出」的悖论代码 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 条件判断和信号方向已审查，避免同时买卖或方向反。 & 中(P1) & 已修复 & 交易/价差方向在报告和信号CSV中列明。 \\
-4.3 & 无过度拟合：策略在样本外数据表现稳定，无「回测收益极高、实盘持续亏损」的过拟合问题 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 保留公式原文列和最终解释列，避免AI按字面公式误解H2方向。 & 中(P1) & 已修复 & 使用样本外检验、稳健性对照、时序验证或报告限制说明。 \\
-4.4 & 无硬编码参数：关键参数（如持仓周期、止损比例、因子窗口）可配置，无AI固定死的魔法数字 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 关键参数集中在config或常量区，报告记录参数含义。 & 低(P2) & 已修复 & 日期、窗口、阈值、模型参数均可追踪。 \\
-4.5 & 无冗余代码：AI生成的重复逻辑、无效循环、未使用的变量已删除，代码简洁高效 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 删除重复逻辑，按模块组织数据、分析、绘图和报告。 & 低(P2) & 已修复 & 代码包按main/data/analysis/plots等文件拆分。 \\
+4.1 & 无AI幻觉：无虚构的API/\allowbreak{}函数/\allowbreak{}库调用，所有import的依赖真实存在且版本兼容 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 依赖库均在requirements.txt中列出，不使用虚构API。 & 中(P1) & 已修复 & 主入口已运行或可打开，输出文件存在。 \\
+4.2 & 无逻辑矛盾：条件判断无冲突，交易方向明确，无「同时买入和卖出」的悖论代码 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 条件判断和信号方向已审查，避免同时买卖或方向反。 & 中(P1) & 已修复 & 交易/\allowbreak{}价差方向在报告和信号CSV中列明。 \\
+4.3 & 无过度拟合：策略在样本外数据表现稳定，无「回测收益极高、实盘持续亏损」的过拟合问题 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 保留公式原文列和最终解释列，避免AI按字面公式误解H2方向。 & 中(P1) & 已修复 & 使用样本外检验、稳健性对照、时序验证或报告限制说明。 \\
+4.4 & 无硬编码参数：关键参数（如持仓周期、止损比例、因子窗口）可配置，无AI固定死的魔法数字 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 关键参数集中在config或常量区，报告记录参数含义。 & 低(P2) & 已修复 & 日期、窗口、阈值、模型参数均可追踪。 \\
+4.5 & 无冗余代码：AI生成的重复逻辑、无效循环、未使用的变量已删除，代码简洁高效 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 删除重复逻辑，按模块组织数据、分析、绘图和报告。 & 低(P2) & 已修复 & 代码包按main/\allowbreak{}data/\allowbreak{}analysis/\allowbreak{}plots等文件拆分。 \\
 \end{longtable}
+\endgroup
 
 \textbf{模块5：代码可读性与可维护性审查}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0739}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.3995}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0961}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0961}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0823}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.0823}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1698}}@{}}
+\begingroup
+\tiny
+\setlength{\tabcolsep}{1pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.045\textwidth}L{0.190\textwidth}L{0.140\textwidth}L{0.190\textwidth}L{0.060\textwidth}L{0.060\textwidth}L{0.205\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{序号}
@@ -227,18 +219,21 @@ AI生成内容占比 & 82\% \\
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-5.1 & 注释完整：核心逻辑、因子计算、交易规则、风控机制均有清晰的中文注释 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 核心函数和关键处理口径保留中文说明或报告解释。 & 低(P2) & 已修复 & 代码附录和运行说明同步提交。 \\
-5.2 & 命名规范：变量、函数、类名符合行业标准，见名知意，无AI生成的无意义命名 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 变量命名围绕业务含义，如H3、alpha、spread、zscore等。 & 低(P2) & 已修复 & 命名与报告表格字段保持一致。 \\
-5.3 & 结构清晰：代码按「数据加载→因子计算→信号生成→交易执行→风控→回测」模块化拆分，无单文件堆砌 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 代码按数据加载、指标计算、建模/回测、绘图、报告输出拆分。 & 低(P2) & 已修复 & 提交代码包保留完整目录结构。 \\
-5.4 & 错误处理完善：有完整的try-catch异常捕获，网络/数据/计算异常有明确的处理逻辑 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 对缺失输入、空样本、模型不可用或数据格式异常设置处理逻辑。 & 中(P1) & 已修复 & 异常情况写入summary、data\_audit或降级路径。 \\
-5.5 & 结果可复现：随机种子固定，回测结果可100\%复现，无AI生成的随机波动代码 & experiment2/main.py; experiment2/analysis.py; experiment2/plots.py & 模型随机种子固定，输出CSV/JSON/PDF可复核。 & 低(P2) & 已修复 & 结果包包含summary、指标表和图表。 \\
+5.1 & 注释完整：核心逻辑、因子计算、交易规则、风控机制均有清晰的中文注释 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 核心函数和关键处理口径保留中文说明或报告解释。 & 低(P2) & 已修复 & 代码附录和运行说明同步提交。 \\
+5.2 & 命名规范：变量、函数、类名符合行业标准，见名知意，无AI生成的无意义命名 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 变量命名围绕业务含义，如H3、alpha、spread、zscore等。 & 低(P2) & 已修复 & 命名与报告表格字段保持一致。 \\
+5.3 & 结构清晰：代码按「数据加载→因子计算→信号生成→交易执行→风控→回测」模块化拆分，无单文件堆砌 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 代码按数据加载、指标计算、建模/\allowbreak{}回测、绘图、报告输出拆分。 & 低(P2) & 已修复 & 提交代码包保留完整目录结构。 \\
+5.4 & 错误处理完善：有完整的try-catch异常捕获，网络/\allowbreak{}数据/\allowbreak{}计算异常有明确的处理逻辑 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 对缺失输入、空样本、模型不可用或数据格式异常设置处理逻辑。 & 中(P1) & 已修复 & 异常情况写入summary、data\_\allowbreak{}audit或降级路径。 \\
+5.5 & 结果可复现：随机种子固定，回测结果可100\%复现，无AI生成的随机波动代码 & experiment2/\allowbreak{}main.py;\allowbreak{} experiment2/\allowbreak{}analysis.py;\allowbreak{} experiment2/\allowbreak{}plots.py & 模型随机种子固定，输出CSV/\allowbreak{}JSON/\allowbreak{}PDF可复核。 & 低(P2) & 已修复 & 结果包包含summary、指标表和图表。 \\
 \end{longtable}
+\endgroup
 
 \textbf{三、AI代码整体评估与总结区}
 
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5039}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.4961}}@{}}
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}L{0.28\textwidth}L{0.66\textwidth}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 \textbf{项目}
@@ -252,13 +247,14 @@ AI生成内容占比 & 82\% \\
 本次AI生成代码的核心缺陷TOP3 & \begin{minipage}[t]{\linewidth}\raggedright
 1. 实验二需要独立可交付，不能继续混放在实验一输出中。\\
 2. H2文字解释为``越小越一边倒''，若直接用正负差额会与正向羊群强度冲突。\\
-3. 4周基准若包含当周 P\_t 会产生同周信息污染。\strut
+3. 4周基准若包含当周 P\_\allowbreak{}t 会产生同周信息污染。\strut
 \end{minipage} \\
 人工修复与优化的核心亮点 & \begin{minipage}[t]{\linewidth}\raggedright
-1. 按题目要求重建时间/数据口径。\\
+1. 按题目要求重建时间/\allowbreak{}数据口径。\\
 2. 输出CSV、图表、报告和summary做交叉验证。\\
 3. 将AI生成代码拆分为可维护模块，并补充审查说明。\strut
 \end{minipage} \\
-本次策略最终合规性结论 & ☑ 完全合规（所有P0/P1问题已修复） \\
+本次策略最终合规性结论 & ☑ 完全合规（所有P0/\allowbreak{}P1问题已修复） \\
 对AI在量化高频策略中局限性的总结反思 & 核心修复为H2方向、历史基准滚动窗口、指标归一化和质量检查。 AI适合快速生成数据处理和报告框架，但关键金融口径、未来函数、样本隔离、风险约束必须由人工逐项审查。 \\
 \end{longtable}
+\endgroup

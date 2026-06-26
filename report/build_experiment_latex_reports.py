@@ -7,6 +7,7 @@ submission satisfies the unified checklist required by the assignment.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -93,6 +94,78 @@ def copy_style(report_dir: Path) -> None:
 
 def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def postprocess_ai_audit_latex(path: Path) -> None:
+    """Keep the DOCX table structure, but make it fit A4 portrait pages."""
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    def table_group(widths: list[float]) -> list[str] | None:
+        if len(widths) == 7:
+            column_spec = (
+                r"@{}L{0.045\textwidth}L{0.190\textwidth}L{0.140\textwidth}"
+                r"L{0.190\textwidth}L{0.060\textwidth}L{0.060\textwidth}"
+                r"L{0.205\textwidth}@{}"
+            )
+            return [
+                r"\begingroup",
+                r"\tiny",
+                r"\setlength{\tabcolsep}{1pt}",
+                r"\renewcommand{\arraystretch}{1.16}",
+                rf"\begin{{longtable}}{{{column_spec}}}",
+            ]
+        if len(widths) == 2:
+            if widths[0] > 0.45:
+                size = r"\scriptsize"
+                column_spec = r"@{}L{0.28\textwidth}L{0.66\textwidth}@{}"
+                tabcolsep = "2pt"
+            else:
+                size = r"\small"
+                column_spec = r"@{}L{0.24\textwidth}L{0.70\textwidth}@{}"
+                tabcolsep = "3pt"
+            return [
+                r"\begingroup",
+                size,
+                rf"\setlength{{\tabcolsep}}{{{tabcolsep}}}",
+                r"\renewcommand{\arraystretch}{1.16}",
+                rf"\begin{{longtable}}{{{column_spec}}}",
+            ]
+        return None
+
+    output: list[str] = []
+    in_grouped_table = False
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.strip() == r"\begin{longtable}[]{@{}":
+            widths: list[float] = []
+            j = i + 1
+            while j < len(lines):
+                widths.extend(float(value) for value in re.findall(r"\\real\{([^}]+)\}", lines[j]))
+                if lines[j].strip().endswith(r"@{}}"):
+                    break
+                j += 1
+            group = table_group(widths)
+            if group is not None:
+                output.extend(group)
+                in_grouped_table = True
+                i = j + 1
+                continue
+
+        output.append(line)
+        if in_grouped_table and line.strip() == r"\end{longtable}":
+            output.append(r"\endgroup")
+            in_grouped_table = False
+        i += 1
+    text = "\n".join(output)
+    if path.read_text(encoding="utf-8").endswith("\n"):
+        text += "\n"
+    text = text.replace("/", r"/\allowbreak{}")
+    text = text.replace(r"\_", r"\_\allowbreak{}")
+    text = text.replace(":", r":\allowbreak{}")
+    text = text.replace("; ", r";\allowbreak{} ")
+    path.write_text(text, encoding="utf-8")
 
 
 def build_submission_checklist(exp_name: str, submit_dir: Path) -> str:
@@ -190,6 +263,21 @@ def prepare_ai_assets(exp_num: int) -> None:
         check=True,
         cwd=ROOT,
     )
+    postprocess_ai_audit_latex(report_dir / "ai_audit_from_docx.tex")
+    subprocess.run(
+        [
+            "pandoc",
+            "--track-changes=all",
+            str(audit_doc),
+            "-t",
+            "markdown",
+            "--wrap=none",
+            "-o",
+            str(report_dir / "ai_audit_from_docx.md"),
+        ],
+        check=True,
+        cwd=ROOT,
+    )
 
     chat_md = report_dir / "ai_chat_from_docx.md"
     subprocess.run(
@@ -256,10 +344,7 @@ def ai_process_appendix(exp_num: int, exp_name: str) -> str:
 
 本节直接从父目录对应提交文件夹中的 AI 代码审核表 docx 抽取内容，单独作为报告附录列出，用于记录代码生成、校验与修改的完整过程。该内容同时保留在提交目录的原始 docx 文件中，便于核验。
 
-{{\scriptsize
-\setlength{{\tabcolsep}}{{2pt}}
 \input{{ai_audit_from_docx.tex}}
-}}
 
 \clearpage
 \section{{AI 交互记录}}
