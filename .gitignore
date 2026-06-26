@@ -36,6 +36,9 @@ data/homework6/original/*.zip
 # Homework 11 raw Tianchi data files are large and should stay local.
 data/homework11/*.csv
 
+# Homework 12 data files (from parent directory, do not commit)
+homework12/data/*.csv
+
 # Large experiment source data should stay local.
 data/experiment1/original/*.zip
 data/experiment1/raw/*.xls
@@ -139,6 +142,16 @@ outputs/homework11/**
 !outputs/homework11/**/*.png
 !outputs/homework11/**/*.json
 !outputs/homework11/**/*.md
+
+# Homework 12 final materials
+!outputs/homework12/
+outputs/homework12/**
+!outputs/homework12/**/
+!outputs/homework12/**/*.csv
+!outputs/homework12/**/*.png
+!outputs/homework12/**/*.json
+!outputs/homework12/**/*.md
+!outputs/homework12/**/*.txt
 
 # 期末大作业(final_project) final submission materials
 !outputs/final_project/

@@ -1,0 +1,14 @@
+﻿特征,欺诈均值,正常均值,差异%
+age,38.63,38.66,-0.08
+customer_months,206.41,204.91,0.73
+policy_annual_premium,1243.69,1247.55,-0.31
+umbrella_limit,1220994.48,1057803.47,15.43
+total_claim_amount,59296.71,50025.87,18.53
+injury_claim,8128.25,7213.17,12.69
+property_claim,8310.93,6989.97,18.9
+vehicle_claim,42914.18,35865.6,19.65
+incident_hour_of_the_day,11.82,11.58,2.04
+number_of_vehicles_involved,1.99,1.83,9.19
+bodily_injuries,1.03,0.98,4.58
+witnesses,1.61,1.43,12.84
+auto_year,2005.13,2004.86,0.01

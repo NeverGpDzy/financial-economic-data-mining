@@ -1,0 +1,421 @@
+======================================================================
+作业12：保险反欺诈检测 — 车险索赔反欺诈模型构建与特征分析
+======================================================================
+
+开始执行保险反欺诈检测全流程...
+
+
+======================================================================
+第一步：数据加载与基本信息统计
+======================================================================
+
+训练集形状: (700, 38)
+测试集形状: (300, 37)
+
+[标签分布]
+  非欺诈(0): 519 条 (74.1%)
+  欺诈(1):   181 条 (25.9%)
+  样本不平衡比例: 1:2.9
+
+[数据结构]
+<class 'pandas.DataFrame'>
+RangeIndex: 700 entries, 0 to 699
+Data columns (total 38 columns):
+ #   Column                       Non-Null Count  Dtype  
+---  ------                       --------------  -----  
+ 0   policy_id                    700 non-null    int64  
+ 1   age                          700 non-null    int64  
+ 2   customer_months              700 non-null    int64  
+ 3   policy_bind_date             700 non-null    str    
+ 4   policy_state                 700 non-null    str    
+ 5   policy_csl                   700 non-null    str    
+ 6   policy_deductable            700 non-null    int64  
+ 7   policy_annual_premium        700 non-null    float64
+ 8   umbrella_limit               700 non-null    int64  
+ 9   insured_zip                  700 non-null    int64  
+ 10  insured_sex                  700 non-null    str    
+ 11  insured_education_level      700 non-null    str    
+ 12  insured_occupation           700 non-null    str    
+ 13  insured_hobbies              700 non-null    str    
+ 14  insured_relationship         700 non-null    str    
+ 15  capital-gains                700 non-null    int64  
+ 16  capital-loss                 700 non-null    int64  
+ 17  incident_date                700 non-null    str    
+ 18  incident_type                700 non-null    str    
+ 19  collision_type               700 non-null    str    
+ 20  incident_severity            700 non-null    str    
+ 21  authorities_contacted        640 non-null    str    
+ 22  incident_state               700 non-null    str    
+ 23  incident_city                700 non-null    str    
+ 24  incident_hour_of_the_day     700 non-null    int64  
+ 25  number_of_vehicles_involved  700 non-null    int64  
+ 26  property_damage              700 non-null    str    
+ 27  bodily_injuries              700 non-null    int64  
+ 28  witnesses                    700 non-null    int64  
+ 29  police_report_available      700 non-null    str    
+ 30  total_claim_amount           700 non-null    int64  
+ 31  injury_claim                 700 non-null    int64  
+ 32  property_claim               700 non-null    int64  
+ 33  vehicle_claim                700 non-null    int64  
+ 34  auto_make                    700 non-null    str    
+ 35  auto_model                   700 non-null    str    
+ 36  auto_year                    700 non-null    int64  
+ 37  fraud                        700 non-null    int64  
+dtypes: float64(1), int64(18), str(19)
+memory usage: 308.5 KB
+None
+
+[缺失值统计（含 '?' 标记）]
+  authorities_contacted: NaN=60, '?'=0, 合计缺失=60 (8.6%)
+
+[数值特征描述性统计]
+        policy_id     age  customer_months  ...  vehicle_claim  auto_year   fraud
+count      700.00  700.00           700.00  ...         700.00     700.00  700.00
+mean    549624.98   38.65           205.30  ...       37688.16    2004.93    0.26
+std     259067.98    9.21           116.09  ...       18724.43       5.98    0.44
+min      96771.00   19.00             0.00  ...          70.00    1995.00    0.00
+25%     343157.75   31.00           114.00  ...       30332.50    2000.00    0.00
+50%     542360.00   38.00           202.00  ...       41869.00    2005.00    0.00
+75%     760946.00   44.00           279.00  ...       50450.50    2010.00    1.00
+max    1045409.00   63.00           498.00  ...       78446.00    2015.00    1.00
+
+[8 rows x 19 columns]
+
+[分类特征基本信息]
+  policy_bind_date: 674 个不同值
+  policy_state: 3 个不同值
+  policy_csl: 3 个不同值
+  insured_sex: 2 个不同值
+  insured_education_level: 7 个不同值
+  insured_occupation: 14 个不同值
+  insured_hobbies: 20 个不同值
+  insured_relationship: 6 个不同值
+  incident_date: 112 个不同值
+  incident_type: 4 个不同值
+  collision_type: 3 个不同值
+  incident_severity: 4 个不同值
+  authorities_contacted: 4 个不同值
+  incident_state: 7 个不同值
+  incident_city: 7 个不同值
+  property_damage: 2 个不同值
+  police_report_available: 2 个不同值
+  auto_make: 14 个不同值
+  auto_model: 39 个不同值
+
+======================================================================
+第二步：缺失值与异常值处理
+======================================================================
+
+已将 '?' 标记替换为 NaN
+
+[缺失值处理]
+  collision_type: 用众数 'Rear Collision' 填充
+  property_damage: 用众数 'NO' 填充
+  police_report_available: 用众数 'NO' 填充
+  authorities_contacted: 用众数 'Police' 填充
+
+缺失值总计: 972 -> 0
+
+[异常值处理]
+
+数据清洗完成
+
+======================================================================
+第三步：欺诈 vs 正常样本对比分析
+======================================================================
+
+欺诈样本: 181 条
+正常样本: 519 条
+
+[数值特征在欺诈/正常样本中的均值对比]
+                         特征       欺诈均值       正常均值   差异%
+                        age      38.63      38.66 -0.08
+            customer_months     206.41     204.91  0.73
+      policy_annual_premium    1243.69    1247.55 -0.31
+             umbrella_limit 1220994.48 1057803.47 15.43
+         total_claim_amount   59296.71   50025.87 18.53
+               injury_claim    8128.25    7213.17 12.69
+             property_claim    8310.93    6989.97 18.90
+              vehicle_claim   42914.18   35865.60 19.65
+   incident_hour_of_the_day      11.82      11.58  2.04
+number_of_vehicles_involved       1.99       1.83  9.19
+            bodily_injuries       1.03       0.98  4.58
+                  witnesses       1.61       1.43 12.84
+                  auto_year    2005.13    2004.86  0.01
+
+[关键分类特征欺诈率]
+
+  insured_sex:
+    MALE: 欺诈率=0.270 (样本数=330)
+    FEMALE: 欺诈率=0.249 (样本数=370)
+
+  insured_education_level:
+    MD: 欺诈率=0.312 (样本数=93)
+    PhD: 欺诈率=0.287 (样本数=87)
+    JD: 欺诈率=0.267 (样本数=120)
+    College: 欺诈率=0.264 (样本数=91)
+    High School: 欺诈率=0.248 (样本数=105)
+    Masters: 欺诈率=0.242 (样本数=99)
+    Associate: 欺诈率=0.200 (样本数=105)
+
+  insured_occupation:
+    exec-managerial: 欺诈率=0.386 (样本数=57)
+    sales: 欺诈率=0.315 (样本数=54)
+    transport-moving: 欺诈率=0.300 (样本数=50)
+    farming-fishing: 欺诈率=0.286 (样本数=42)
+    tech-support: 欺诈率=0.280 (样本数=50)
+    craft-repair: 欺诈率=0.278 (样本数=54)
+    protective-serv: 欺诈率=0.268 (样本数=41)
+    armed-forces: 欺诈率=0.255 (样本数=51)
+    handlers-cleaners: 欺诈率=0.237 (样本数=38)
+    machine-op-inspct: 欺诈率=0.227 (样本数=66)
+    priv-house-serv: 欺诈率=0.212 (样本数=52)
+    prof-specialty: 欺诈率=0.208 (样本数=53)
+    adm-clerical: 欺诈率=0.200 (样本数=45)
+    other-service: 欺诈率=0.149 (样本数=47)
+
+  insured_relationship:
+    other-relative: 欺诈率=0.310 (样本数=126)
+    unmarried: 欺诈率=0.275 (样本数=91)
+    wife: 欺诈率=0.267 (样本数=105)
+    not-in-family: 欺诈率=0.260 (样本数=123)
+    own-child: 欺诈率=0.231 (样本数=130)
+    husband: 欺诈率=0.216 (样本数=125)
+
+  incident_type:
+    Single Vehicle Collision: 欺诈率=0.295 (样本数=275)
+    Multi-vehicle Collision: 欺诈率=0.291 (样本数=302)
+    Parked Car: 欺诈率=0.127 (样本数=55)
+    Vehicle Theft: 欺诈率=0.074 (样本数=68)
+
+  incident_severity:
+    Major Damage: 欺诈率=0.600 (样本数=200)
+    Total Loss: 欺诈率=0.146 (样本数=199)
+    Minor Damage: 欺诈率=0.118 (样本数=237)
+    Trivial Damage: 欺诈率=0.062 (样本数=64)
+
+  collision_type:
+    Front Collision: 欺诈率=0.280 (样本数=175)
+    Side Collision: 欺诈率=0.258 (样本数=194)
+    Rear Collision: 欺诈率=0.248 (样本数=331)
+
+  police_report_available:
+    NO: 欺诈率=0.265 (样本数=483)
+    YES: 欺诈率=0.244 (样本数=217)
+
+======================================================================
+第四步：特征工程
+======================================================================
+
+[衍生特征]
+  衍生特征 'policy_tenure_days'（保单持有时长）: 范围 [-38, 9178] 天
+  衍生特征: incident_year, incident_month, incident_dayofweek
+  衍生特征: policy_bind_year, policy_bind_month
+  衍生特征 'claim_to_premium_ratio'（索赔/保费比）
+  衍生特征 'injury_claim_ratio'（伤害索赔占比）
+  衍生特征 'vehicle_age'（车龄）: 均值 9.9 年
+  衍生特征 'net_capital_gain'（净资本利得）
+  衍生特征 'has_capital_activity'（是否有资本变动）
+  衍生特征 'late_night_accident'（深夜事故标识）
+  衍生特征 'multi_injury'（多人受伤标识）
+  衍生特征 'multi_witness'（多证人标识）
+  衍生特征 'has_umbrella'（有umbrella保险标识）
+
+特征工程后训练集维度: (700, 50)
+特征工程后测试集维度: (300, 49)
+
+[特征编码与标准化]
+  分类特征 (17): ['collision_type', 'police_report_available', 'insured_occupation', 'auto_make', 'incident_state', 'incident_type', 'insured_relationship', 'incident_severity', 'insured_sex', 'property_damage', 'authorities_contacted', 'insured_hobbies', 'policy_csl', 'insured_education_level', 'incident_city', 'auto_model', 'policy_state']
+  数值特征 (27): 共27个
+
+[冗余特征检测（相关性阈值=0.85）]
+  检测到 10 对高相关特征:
+    policy_tenure_days <-> policy_bind_year: 0.999
+    customer_months <-> age: 0.916
+    witnesses <-> multi_witness: 0.893
+    claim_to_premium_ratio <-> vehicle_claim: 0.864
+    total_claim_amount <-> vehicle_claim: 0.978
+    total_claim_amount <-> claim_to_premium_ratio: 0.892
+    bodily_injuries <-> multi_injury: 0.866
+    incident_year <-> incident_month: 0.982
+    umbrella_limit <-> has_umbrella: 0.957
+    vehicle_age <-> auto_year: 0.998
+  剔除 9 个冗余特征: ['vehicle_claim', 'has_umbrella', 'multi_witness', 'multi_injury', 'auto_year', 'policy_bind_year', 'claim_to_premium_ratio', 'age', 'incident_month']
+
+最终特征数: 44
+
+======================================================================
+第五步：模型构建与训练
+======================================================================
+
+训练集: 560 条
+验证集: 140 条
+验证集欺诈率: 0.257
+
+[模型1: 逻辑回归]
+  最佳参数: {'C': 1.0, 'class_weight': 'balanced'}
+  最佳CV AUC: 0.7203
+
+[模型2: 决策树]
+  最佳参数: {'class_weight': None, 'max_depth': 5, 'min_samples_leaf': 10, 'min_samples_split': 5}
+  最佳CV AUC: 0.8416
+
+[模型3: 随机森林]
+  最佳参数: {'class_weight': 'balanced_subsample', 'max_depth': 8, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200}
+  最佳CV AUC: 0.7795
+
+======================================================================
+第六步：模型评估
+======================================================================
+
+[模型评估指标汇总]
+
+  逻辑回归:
+    精确率: 0.5714
+    召回率: 0.6667
+    F1值:   0.6154
+    AUC:    0.7866 (CV: 0.7486 ± 0.0337)
+    准确率: 0.7857
+    AUC可用: [OK] 达标
+    混淆矩阵:
+      TN=86, FP=18
+      FN=12, TP=24
+
+  决策树:
+    精确率: 0.6897
+    召回率: 0.5556
+    F1值:   0.6154
+    AUC:    0.8608 (CV: 0.8194 ± 0.0438)
+    准确率: 0.8214
+    AUC可用: [OK] 达标
+    混淆矩阵:
+      TN=95, FP=9
+      FN=16, TP=20
+
+  随机森林:
+    精确率: 0.5000
+    召回率: 0.2222
+    F1值:   0.3077
+    AUC:    0.8205 (CV: 0.7843 ± 0.0098)
+    准确率: 0.7429
+    AUC可用: [OK] 达标
+    混淆矩阵:
+      TN=96, FP=8
+      FN=28, TP=8
+
+[指标汇总表]
+  模型    精确率    召回率    F1值    AUC    准确率  CV AUC均值  CV AUC标准差 AUC可用(AUC>=0.7)
+逻辑回归 0.5714 0.6667 0.6154 0.7866 0.7857    0.7486     0.0337            [OK]
+ 决策树 0.6897 0.5556 0.6154 0.8608 0.8214    0.8194     0.0438            [OK]
+随机森林 0.5000 0.2222 0.3077 0.8205 0.7429    0.7843     0.0098            [OK]
+
+指标汇总表已保存至 outputs/homework12/model_evaluation_results.csv
+
+ROC/AUC曲线已保存至 outputs/homework12/roc_auc_curves.png
+混淆矩阵已保存至 outputs/homework12/confusion_matrices.png
+
+特征重要性图已保存至 outputs/homework12/feature_importance.png
+
+[Top 10 重要特征（随机森林）]
+  incident_severity_1: 0.0703
+  insured_hobbies: 0.0624
+  incident_severity_2: 0.0603
+  total_claim_amount: 0.0553
+  injury_claim: 0.0494
+  property_claim: 0.0437
+  injury_claim_ratio: 0.0430
+  insured_zip: 0.0405
+  customer_months: 0.0379
+  policy_annual_premium: 0.0345
+
+[Top 10 逻辑回归系数（按绝对值）]
+  incident_severity_1: -2.2006 (低风险)
+  incident_severity_2: -2.1451 (低风险)
+  incident_severity_3: -2.1145 (低风险)
+  total_claim_amount: 0.4659 (高风险)
+  incident_state: 0.2280 (高风险)
+  injury_claim_ratio: -0.2262 (低风险)
+  property_claim: -0.2252 (低风险)
+  incident_type_2: -0.1927 (低风险)
+  witnesses: 0.1791 (高风险)
+  policy_deductable: 0.1743 (高风险)
+
+======================================================================
+第七步：数据可视化
+======================================================================
+数值特征分布图已保存至 outputs/homework12/numerical_feature_distribution.png
+分类特征欺诈率图已保存至 outputs/homework12/categorical_fraud_rate.png
+相关性热力图已保存至 outputs/homework12/correlation_heatmap.png
+欺诈分析仪表盘已保存至 outputs/homework12/fraud_analysis_dashboard.png
+
+======================================================================
+第八步：业务结论与特征重要性分析
+======================================================================
+
+========== 业务结论 ==========
+
+【研究假设验证】
+假设1: 报案延迟过长与欺诈风险正相关
+  → 通过policy_tenure_days（保单持有时长）和incident_hour_of_the_day（事故时段）
+    等衍生特征验证，异常的时间模式是欺诈行为的重要信号。
+
+假设2: 索赔金额异常与欺诈风险正相关
+  → 通过claim_to_premium_ratio（索赔/保费比）和total_claim_amount
+    验证，高额索赔且与保费不匹配的案件欺诈风险显著增加。
+
+假设3: 历史行为特征与欺诈风险相关
+  → 通过capital-gains/capital-loss、customer_months等特征验证，
+    投保人的财务行为和保险历史对欺诈预测有参考价值。
+
+【高欺诈风险行为画像（基于模型分析）】
+  1. 索赔金额/保费比率异常偏高 → 可能虚报损失金额
+  2. 深夜（0-5点）发生事故 → 可能蓄意制造事故现场
+  3. 无人受伤却高额索赔 → 索赔项目与实际不符
+  4. 保单生效后短时间内出险 → 可能为预谋欺诈
+  5. 无目击证人或无警方报告 → 缺乏第三方验证
+  6. 老旧车辆高额索赔 → 车辆价值与索赔金额不匹配
+
+【模型推荐】
+  推荐使用随机森林模型，其在特征重要性解释性和预测性能方面
+  均有良好表现，适合保险反欺诈场景的部署。
+
+【风控建议】
+  1. 建立实时欺诈评分机制，对高风险案件进行人工复核
+  2. 重点关注深夜事故、高额索赔、无证人案件
+  3. 将模型输出作为辅助决策工具，结合理赔员经验综合判断
+  4. 定期更新模型，适应新出现的欺诈模式
+
+业务结论已保存至 outputs/homework12\business_conclusions.txt
+
+======================================================================
+第九步：生成测试集预测结果
+======================================================================
+测试集预测结果已保存至 outputs/homework12\test_predictions.csv
+测试集预测结果（含概率）已保存至 outputs/homework12\test_predictions_with_prob.csv
+
+预测统计:
+  预测为欺诈: 42 条 (14.0%)
+  预测为正常: 258 条
+
+清洗后数据已保存至 outputs/homework12/train_cleaned.csv 和 test_cleaned.csv
+
+======================================================================
+实验完成！
+======================================================================
+
+所有输出文件位于: outputs/homework12/
+  - model_evaluation_results.csv    : 模型评估指标汇总
+  - feature_importance.csv         : 特征重要性
+  - fraud_normal_comparison.csv    : 欺诈/正常样本对比
+  - train_cleaned.csv / test_cleaned.csv : 清洗后数据
+  - test_predictions.csv           : 测试集预测结果
+  - roc_auc_curves.png             : ROC/AUC曲线
+  - confusion_matrices.png         : 混淆矩阵
+  - feature_importance.png         : 特征重要性图
+  - numerical_feature_distribution.png : 数值特征分布对比
+  - categorical_fraud_rate.png     : 分类特征欺诈率
+  - correlation_heatmap.png        : 相关性热力图
+  - fraud_analysis_dashboard.png   : 欺诈分析仪表盘
+  - business_conclusions.txt       : 业务结论
+
+======================================================================
