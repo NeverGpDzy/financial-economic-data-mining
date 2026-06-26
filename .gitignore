@@ -32,6 +32,9 @@ data/**/*.pkl
 # Homework 6 extracted data is reproducible from data/homework6/original/*.zip
 data/homework6/raw/**
 
+# Homework 11 raw Tianchi data files are large and should stay local.
+data/homework11/*.csv
+
 # Experiment 1 final materials
 !outputs/experiment1/
 outputs/experiment1/**
