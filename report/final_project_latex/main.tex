@@ -2,7 +2,7 @@
 \usepackage{thesis-style}
 \usepackage{amsmath}
 
-\graphicspath{{../../outputs/final_project/}}
+\graphicspath{{../../outputs/final_project/}{figures/}}
 \headermark{《金融与经济数据挖掘》期末大作业报告}
 \reporttitle{《金融与经济数据挖掘》期末大作业报告}
 \reportsubtitle{行业轮动多因子量化策略研发与风险控制}
@@ -11,6 +11,9 @@
 \major{数据科学与大数据技术}
 \phone{18765788600}
 \date{2026年7月}
+\newcommand{\ProjectCodeInput}[1]{%
+  \IfFileExists{final_project/#1}{\CodeInput{final_project/#1}}{\CodeInput{../../final_project/#1}}%
+}
 
 \begin{document}
 
@@ -439,48 +442,9 @@ LightGBM 归一化特征重要度见表 \ref{tab:lgbm-weight}。短期动量和�
 
 总体看，初版代码的架构和工程基础并不差：模块划分清楚，因子、模型、回测和报告输出都有独立文件，结果也能复现。但初版在金融数据挖掘最核心的“时序严谨性”和“成本完整性”上存在漏洞，因此不适合原样提交。修复后的版本才更接近一份可信的量化课程项目。
 
-\subsection{审查与修复表}
+\input{ai_audit_from_docx.tex}
 
-\begin{table}[H]
-    \centering
-    \scriptsize
-    \caption{AI 代码审查与修复摘要}
-    \label{tab:ai-audit}
-    \begin{tabular}{L{0.15\textwidth}L{0.15\textwidth}L{0.26\textwidth}L{0.28\textwidth}}
-        \toprule
-        模块 & 功能 & 审核要点 & 修复结果 \\
-        \midrule
-        \shortstack[l]{data\_loader.py\\factors.py} & 数据加载、因子计算、前瞻收益对齐 & 核查月末因子是否只使用历史行情，并按前瞻收益所属月份划分样本，避免 2024-12 信号对应的 2025-01 收益进入训练。 & 已修复并复核，样本划分改为按 \texttt{fwd\_date} 控制。 \\
-        \shortstack[l]{quality.py\\main.py} & IC/IR 与共线性质检 & 原质检结果只输出报告，没有真正驱动 LGBM 训练路径。 & 已修复，\texttt{kept\_factors} 接入训练、IC 方向和综合打分。 \\
-        \path{model.py} & LGBM 训练与交叉验证 & 原 \texttt{GroupKFold} 不能保证训练月份早于验证月份。 & 已修复为按月份递进的扩展窗口交叉验证。 \\
-        \shortstack[l]{backtest.py\\robustness.py} & 回撤触发减仓风控 & 原风控只缩放收益，未扣除降仓与恢复仓造成的额外换手成本。 & 已修复，新增风控换手与风控成本字段，并汇总进月度成本。 \\
-        \shortstack[l]{main.py\\report.py} & 提交材料与报告生成 & 原 AI 审核表和交互记录字符串截断，Word 报告缺少 AI 审查内容。 & 已修复并重新生成报告材料。 \\
-        \shortstack[l]{backtest.py\\report.py} & 交易执行口径 & 配套数据没有 \texttt{open} 字段，无法严格模拟次日开盘成交。 & 已在报告中说明月末收盘代理口径及其限制。 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{AI交互记录摘要}
-
-\begin{table}[H]
-    \centering
-    \scriptsize
-    \caption{AI 辅助关键交互节点}
-    \label{tab:ai-log}
-    \begin{tabular}{L{0.24\textwidth}L{0.64\textwidth}}
-        \toprule
-        节点 & 内容 \\
-        \midrule
-        需求理解与数据导入 & 读取期末大作业要求与配套数据，确认任务为申万一级行业轮动多因子策略全流程。 \\
-        数据与因子核查 & 核对 31 行业、787 个交易日、PB 与行情代码一致，确认动量、估值、资金流和 Z-Score 口径。 \\
-        未来函数修复 & 发现按 \texttt{signal\_date} 划分会污染 2025 年样本外收益，改为按 \texttt{fwd\_date} 划分。 \\
-        因子质检修复 & 发现 \texttt{kept\_factors} 未进入建模路径，修复为质检结果驱动训练与打分。 \\
-        验证方法修复 & 将 \texttt{GroupKFold} 改为训练月早于验证月的扩展窗口验证。 \\
-        风控成本修复 & 补充减仓与恢复仓的额外换手成本，并输出最终风控版指标。 \\
-        报告与提交修复 & 补全 AI 审核、交互记录和提交材料，重新生成可复核输出。 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
+\input{ai_chat_from_docx.tex}
 
 \section{结论}
 
@@ -501,27 +465,27 @@ python -m final_project.main --build-docx
 \end{CodeBlock}
 
 \subsection{\texorpdfstring{\texttt{config.py}}{config.py}}
-\CodeInput{../../final_project/config.py}
+\ProjectCodeInput{config.py}
 
 \subsection{\texorpdfstring{\texttt{data\_loader.py}}{data loader.py}}
-\CodeInput{../../final_project/data_loader.py}
+\ProjectCodeInput{data_loader.py}
 
 \subsection{\texorpdfstring{\texttt{factors.py}}{factors.py}}
-\CodeInput{../../final_project/factors.py}
+\ProjectCodeInput{factors.py}
 
 \subsection{\texorpdfstring{\texttt{quality.py}}{quality.py}}
-\CodeInput{../../final_project/quality.py}
+\ProjectCodeInput{quality.py}
 
 \subsection{\texorpdfstring{\texttt{model.py}}{model.py}}
-\CodeInput{../../final_project/model.py}
+\ProjectCodeInput{model.py}
 
 \subsection{\texorpdfstring{\texttt{backtest.py}}{backtest.py}}
-\CodeInput{../../final_project/backtest.py}
+\ProjectCodeInput{backtest.py}
 
 \subsection{\texorpdfstring{\texttt{robustness.py}}{robustness.py}}
-\CodeInput{../../final_project/robustness.py}
+\ProjectCodeInput{robustness.py}
 
 \subsection{\texorpdfstring{\texttt{main.py}}{main.py}}
-\CodeInput{../../final_project/main.py}
+\ProjectCodeInput{main.py}
 
 \end{document}
