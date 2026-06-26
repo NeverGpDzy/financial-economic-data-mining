@@ -2,6 +2,7 @@ baostock
 pandas
 numpy
 matplotlib
+seaborn
 scikit-learn
 lightgbm
 statsmodels

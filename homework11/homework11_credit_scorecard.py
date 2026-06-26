@@ -20,11 +20,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (roc_auc_score, roc_curve, accuracy_score,
                              precision_score, recall_score, f1_score,
                              confusion_matrix, classification_report)
+from sklearn.base import BaseEstimator, TransformerMixin
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -39,7 +41,7 @@ CORR_THRESHOLD = 0.8           # 相关性剔除阈值
 WOE_BINS = 10                  # WOE分箱数量
 BASE_SCORE = 600               # 信用评分基础分
 PDO = 50                       # Points to Double the Odds
-BASE_ODDS = 50                 # 基础好坏比
+BASE_ODDS = 1                  # 基础好坏比：1表示600分对应50%违约概率的中性评分点
 SCORE_MIN = 300                # 最低信用分数
 SCORE_MAX = 850                # 最高信用分数
 DEFAULT_BINS = [299, 450, 550, 650, 750, 850]  # 信用等级分箱
@@ -136,6 +138,14 @@ print("=" * 70)
 train = train_df.copy()
 test = test_df.copy()
 
+# 在任何统计量拟合、特征筛选之前先划分建模训练集/验证集，避免验证集信息泄露。
+model_train_idx, model_val_idx = train_test_split(
+    train.index,
+    test_size=TEST_SIZE,
+    random_state=RANDOM_SEED,
+    stratify=train['isDefault']
+)
+
 # 2.1 处理employmentLength特征
 print("\n2.1 处理employmentLength特征...")
 def parse_employment_length(x):
@@ -190,13 +200,15 @@ categorical_cols = ['grade', 'subGrade', 'homeOwnership', 'verificationStatus',
 
 label_encoders = {}
 for col in categorical_cols:
-    le = LabelEncoder()
-    combined = pd.concat([train[col], test[col]], axis=0).astype(str)
-    le.fit(combined)
-    train[col] = le.transform(train[col].astype(str))
-    test[col] = le.transform(test[col].astype(str))
-    label_encoders[col] = le
-    print(f"  编码 {col}: {len(le.classes_)} 个类别")
+    # 仅使用建模训练集拟合类别映射，验证集/测试集未见类别统一映射到“未知类别”。
+    train_values = train.loc[model_train_idx, col].astype(str)
+    classes = sorted(train_values.unique())
+    mapping = {value: idx for idx, value in enumerate(classes)}
+    unknown_code = len(mapping)
+    train[col] = train[col].astype(str).map(mapping).fillna(unknown_code).astype(int)
+    test[col] = test[col].astype(str).map(mapping).fillna(unknown_code).astype(int)
+    label_encoders[col] = mapping
+    print(f"  编码 {col}: {len(classes)} 个训练集类别，未知类别编码为 {unknown_code}")
 
 # 2.5 缺失值填充 - 使用训练集的中位数填充训练集和测试集（避免数据泄露）
 print("\n2.5 缺失值填充...")
@@ -204,8 +216,8 @@ exclude_cols = ['id', 'isDefault', 'issueDate']
 numeric_features = [col for col in train.select_dtypes(include=[np.number]).columns
                     if col not in exclude_cols]
 
-# 先计算训练集的中位数
-median_values = train[numeric_features].median()
+# 仅使用建模训练集计算中位数，避免验证集信息参与预处理参数拟合。
+median_values = train.loc[model_train_idx, numeric_features].median()
 
 # 用训练集的中位数分别填充训练集和测试集
 for col in numeric_features:
@@ -225,7 +237,8 @@ print("=" * 70)
 
 # 选择数值特征进行相关性分析（排除已编码的分类特征的原始值）
 feature_cols = [col for col in numeric_features if col in train.columns]
-corr_matrix = train[feature_cols].corr()
+model_train_for_selection = train.loc[model_train_idx]
+corr_matrix = model_train_for_selection[feature_cols].corr()
 
 # 绘制相关性热力图
 fig, ax = plt.subplots(figsize=(16, 12))
@@ -256,8 +269,8 @@ for col1, col2, corr in high_corr_pairs:
 # 剔除高度相关的冗余特征
 features_to_drop = set()
 for col1, col2, corr in high_corr_pairs:
-    corr1 = abs(train[col1].corr(train['isDefault']))
-    corr2 = abs(train[col2].corr(train['isDefault']))
+    corr1 = abs(model_train_for_selection[col1].corr(model_train_for_selection['isDefault']))
+    corr2 = abs(model_train_for_selection[col2].corr(model_train_for_selection['isDefault']))
     if corr1 < corr2:
         features_to_drop.add(col1)
     else:
@@ -323,6 +336,111 @@ def calc_woe_iv(df, feature, target, bins=10):
 
     return grouped, iv
 
+def format_bin_range(left, right):
+    """格式化分箱区间，便于评分卡结果阅读。"""
+    if np.isneginf(left):
+        return f"(-inf, {right:.4g}]"
+    if np.isposinf(right):
+        return f"({left:.4g}, +inf)"
+    return f"({left:.4g}, {right:.4g}]"
+
+class WoeTransformer(BaseEstimator, TransformerMixin):
+    """基于训练集拟合分箱与WOE映射，并将原始特征转换为WOE特征。"""
+
+    def __init__(self, bins=10):
+        self.bins = bins
+
+    def fit(self, X, y):
+        X_df = pd.DataFrame(X).copy()
+        y_series = pd.Series(y).reset_index(drop=True)
+        X_fit = X_df.reset_index(drop=True)
+
+        self.features_ = X_fit.columns.tolist()
+        self.rules_ = {}
+        self.bin_rows_ = []
+
+        for feature in self.features_:
+            values = X_fit[feature].astype(float)
+
+            try:
+                _, bin_edges = pd.qcut(values, q=self.bins, duplicates='drop', retbins=True)
+            except ValueError:
+                _, bin_edges = pd.cut(values, bins=self.bins, retbins=True, duplicates='drop')
+
+            bin_edges = np.unique(bin_edges.astype(float))
+            if len(bin_edges) < 2:
+                bin_edges = np.array([-np.inf, np.inf])
+            else:
+                bin_edges[0] = -np.inf
+                bin_edges[-1] = np.inf
+
+            bin_id = pd.cut(values, bins=bin_edges, labels=False, include_lowest=True)
+            temp = pd.DataFrame({'bin_id': bin_id, 'target': y_series})
+            grouped = temp.groupby('bin_id', observed=False)['target'].agg(['count', 'sum'])
+            grouped.columns = ['total', 'bad']
+            grouped['good'] = grouped['total'] - grouped['bad']
+
+            total_bad = grouped['bad'].sum()
+            total_good = grouped['good'].sum()
+            if total_bad == 0 or total_good == 0:
+                grouped['bad_pct'] = 0.0001
+                grouped['good_pct'] = 0.0001
+            else:
+                grouped['bad_pct'] = (grouped['bad'] / total_bad).replace(0, 0.0001)
+                grouped['good_pct'] = (grouped['good'] / total_good).replace(0, 0.0001)
+
+            grouped['woe'] = np.log(grouped['good_pct'] / grouped['bad_pct'])
+            grouped['iv'] = (grouped['good_pct'] - grouped['bad_pct']) * grouped['woe']
+            feature_iv = grouped['iv'].sum()
+            woe_map = grouped['woe'].to_dict()
+
+            for raw_bin_id, row in grouped.iterrows():
+                bin_index = int(raw_bin_id)
+                left = bin_edges[bin_index]
+                right = bin_edges[bin_index + 1]
+                self.bin_rows_.append({
+                    '特征': feature,
+                    '分箱编号': bin_index,
+                    '分箱范围': format_bin_range(left, right),
+                    '样本数': int(row['total']),
+                    '违约数': int(row['bad']),
+                    '正常数': int(row['good']),
+                    '违约率': float(row['bad'] / row['total']) if row['total'] else 0.0,
+                    'WOE': float(row['woe']),
+                    'IV贡献': float(row['iv']),
+                    '特征IV': float(feature_iv)
+                })
+
+            self.rules_[feature] = {
+                'edges': bin_edges,
+                'woe_map': woe_map,
+                'default_woe': 0.0
+            }
+
+        return self
+
+    def transform(self, X):
+        X_df = pd.DataFrame(X).copy()
+        if list(X_df.columns) != self.features_:
+            X_df.columns = self.features_
+
+        transformed = pd.DataFrame(index=X_df.index)
+        for feature in self.features_:
+            rule = self.rules_[feature]
+            bin_id = pd.cut(
+                X_df[feature].astype(float),
+                bins=rule['edges'],
+                labels=False,
+                include_lowest=True
+            )
+            transformed[feature] = bin_id.map(rule['woe_map']).fillna(rule['default_woe']).astype(float)
+
+        return transformed
+
+    def get_bin_table(self):
+        """返回训练集拟合出的分箱WOE明细表。"""
+        return pd.DataFrame(self.bin_rows_)
+
 # 计算所有特征的IV值
 print(f"\n4.1 计算各特征的IV值...")
 iv_results = []
@@ -330,7 +448,7 @@ features_for_iv = [col for col in feature_cols if col not in features_to_drop]
 
 for feature in features_for_iv:
     try:
-        _, iv = calc_woe_iv(train, feature, 'isDefault', bins=WOE_BINS)
+        _, iv = calc_woe_iv(model_train_for_selection, feature, 'isDefault', bins=WOE_BINS)
         iv_results.append({'特征': feature, 'IV值': iv})
     except Exception as e:
         print(f"  警告: 计算 {feature} 的IV值时出错: {e}")
@@ -387,17 +505,22 @@ y = train['isDefault'].copy()
 X = X.replace([np.inf, -np.inf], np.nan)
 X = X.fillna(X.median())
 
-# 划分训练集和验证集（使用分层抽样保证正负样本比例一致）
-X_train, X_val, y_train, y_val = train_test_split(
-    X, y, test_size=TEST_SIZE, random_state=RANDOM_SEED, stratify=y
-)
+# 使用前面已经锁定的训练/验证索引，确保特征筛选与预处理参数只来自训练部分。
+X_train = X.loc[model_train_idx].copy()
+X_val = X.loc[model_val_idx].copy()
+y_train = y.loc[model_train_idx].copy()
+y_val = y.loc[model_val_idx].copy()
 print(f"训练集大小: {X_train.shape}")
 print(f"验证集大小: {X_val.shape}")
 
-# 标准化（仅在训练集上fit，避免数据泄露）
+# WOE转换与标准化均仅在训练集上fit，避免验证集信息泄露。
+woe_transformer = WoeTransformer(bins=WOE_BINS)
+X_train_woe = woe_transformer.fit_transform(X_train, y_train)
+X_val_woe = woe_transformer.transform(X_val)
+
 scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_val_scaled = scaler.transform(X_val)
+X_train_scaled = scaler.fit_transform(X_train_woe)
+X_val_scaled = scaler.transform(X_val_woe)
 
 # 训练逻辑回归模型
 print("\n5.2 训练逻辑回归模型...")
@@ -406,8 +529,13 @@ lr_model = LogisticRegression(
 )
 lr_model.fit(X_train_scaled, y_train)
 
-# 交叉验证
-cv_scores = cross_val_score(lr_model, X_train_scaled, y_train, cv=CV_FOLDS, scoring='roc_auc')
+# 交叉验证使用Pipeline，保证每一折内部单独拟合标准化器，避免折间数据泄露。
+cv_model = make_pipeline(
+    WoeTransformer(bins=WOE_BINS),
+    StandardScaler(),
+    LogisticRegression(C=1.0, max_iter=1000, random_state=RANDOM_SEED, class_weight='balanced')
+)
+cv_scores = cross_val_score(cv_model, X_train, y_train, cv=CV_FOLDS, scoring='roc_auc')
 print(f"5.3 交叉验证AUC: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
 
 # ============================================================
@@ -496,7 +624,7 @@ print("\n" + "=" * 70)
 print("第七部分：信用评分卡生成")
 print("=" * 70)
 
-def generate_scorecard(model, features, factor, offset):
+def generate_scorecard(model, features, woe_transformer, factor, offset):
     """
     生成标准化信用评分卡
 
@@ -507,25 +635,24 @@ def generate_scorecard(model, features, factor, offset):
     offset: 评分卡偏移量
 
     返回:
-    scorecard_df: 评分卡数据框
+    scorecard_df: 按特征分箱展开的评分卡明细
     """
-    # 获取模型系数
     coefficients = model.coef_[0]
+    coef_map = dict(zip(features, coefficients))
 
-    # 计算每个特征的分数贡献
-    scorecard_data = []
-    for i, feature in enumerate(features):
-        coef = coefficients[i]
-        feature_score = -coef * factor
-        scorecard_data.append({
-            '特征': feature,
-            '系数': coef,
-            '分数贡献': feature_score,
-            '权重方向': '正向(降低违约风险)' if coef < 0 else '负向(增加违约风险)'
-        })
+    scorecard_df = woe_transformer.get_bin_table().copy()
+    scorecard_df['系数'] = scorecard_df['特征'].map(coef_map)
+    scorecard_df['分箱分数'] = -scorecard_df['系数'] * scorecard_df['WOE'] * factor
+    scorecard_df['权重方向'] = np.where(
+        scorecard_df['系数'] < 0,
+        '正向(降低违约风险)',
+        '负向(增加违约风险)'
+    )
+    scorecard_df = scorecard_df[
+        ['特征', '分箱编号', '分箱范围', '样本数', '违约数', '正常数', '违约率',
+         'WOE', 'IV贡献', '特征IV', '系数', '分箱分数', '权重方向']
+    ]
 
-    scorecard_df = pd.DataFrame(scorecard_data)
-    scorecard_df = scorecard_df.sort_values('分数贡献', key=abs, ascending=False)
     return scorecard_df
 
 # 计算评分卡参数
@@ -539,10 +666,16 @@ print(f"  Factor: {factor:.2f}")
 print(f"  Offset: {offset:.2f}")
 
 # 生成评分卡
-scorecard_df = generate_scorecard(lr_model, final_features, factor, offset)
+scorecard_df = generate_scorecard(lr_model, final_features, woe_transformer, factor, offset)
+scorecard_summary_df = pd.DataFrame({
+    '特征': final_features,
+    '系数': lr_model.coef_[0],
+    '重要性': np.abs(lr_model.coef_[0]),
+    '方向': ['正向(降低违约风险)' if coef < 0 else '负向(增加违约风险)' for coef in lr_model.coef_[0]]
+}).sort_values('重要性', ascending=False)
 
 print("\n7.2 信用评分卡特征权重:")
-print(scorecard_df.to_string(index=False))
+print(scorecard_summary_df.to_string(index=False))
 
 # 保存评分卡
 scorecard_df.to_csv(f'{OUTPUT_DIR}/credit_scorecard.csv', index=False, encoding='utf-8-sig')
@@ -550,12 +683,11 @@ print("\n已保存: credit_scorecard.csv")
 
 # 可视化特征分数贡献
 fig, ax = plt.subplots(figsize=(12, 8))
-top_scorecard = scorecard_df.head(15)
-colors = ['#2ecc71' if x > 0 else '#e74c3c' for x in top_scorecard['分数贡献']]
-ax.barh(top_scorecard['特征'], top_scorecard['分数贡献'], color=colors)
-ax.set_xlabel('分数贡献')
+feature_score_summary = scorecard_df.groupby('特征')['分箱分数'].apply(lambda x: x.abs().mean()).sort_values(ascending=False)
+top_scorecard = feature_score_summary.head(15)
+ax.barh(top_scorecard.index, top_scorecard.values, color='#3498db')
+ax.set_xlabel('平均绝对分箱分数')
 ax.set_title('Top 15 特征信用分数贡献')
-ax.axvline(x=0, color='black', linestyle='-', linewidth=0.5)
 ax.invert_yaxis()
 plt.tight_layout()
 plt.savefig(f'{OUTPUT_DIR}/scorecard_feature_contributions.png', dpi=150, bbox_inches='tight')
@@ -610,12 +742,12 @@ print("\n" + "=" * 70)
 print("第九部分：用户信用分数计算与建议")
 print("=" * 70)
 
-def calculate_credit_score(model, scaler, features, factor, offset, df, fill_values):
+def calculate_credit_score(model, scaler, woe_transformer, features, factor, offset, df, fill_values):
     """
     计算用户信用分数
 
-    公式: Score = Offset - Factor * ln(p/(1-p))
-    其中: odds = (1-p)/p, p为违约概率
+    公式: Score = Offset + Factor * ln((1-p)/p)
+    其中: (1-p)/p 为好坏比，p为违约概率；好坏比越高，信用分越高。
 
     参数:
     model: 训练好的逻辑回归模型
@@ -638,15 +770,16 @@ def calculate_credit_score(model, scaler, features, factor, offset, df, fill_val
         if col in fill_values:
             X[col] = X[col].fillna(fill_values[col])
 
-    X_scaled = scaler.transform(X)
+    X_woe = woe_transformer.transform(X)
+    X_scaled = scaler.transform(X_woe)
     proba = model.predict_proba(X_scaled)[:, 1]
 
     # 避免log(0)和log(inf)
     proba = np.clip(proba, 0.001, 0.999)
 
-    # 计算分数: Score = Offset - Factor * ln(odds)
+    # 计算分数: Score = Offset + Factor * ln(odds)
     odds = (1 - proba) / proba
-    scores = offset - factor * np.log(odds)
+    scores = offset + factor * np.log(odds)
 
     # 限制分数范围
     scores = np.clip(scores, SCORE_MIN, SCORE_MAX)
@@ -659,7 +792,7 @@ fill_values = X.median().to_dict()
 # 计算训练集用户的信用分数
 print("\n9.1 计算用户信用分数...")
 train_scores, train_proba = calculate_credit_score(
-    lr_model, scaler, final_features, factor, offset, train, fill_values
+    lr_model, scaler, woe_transformer, final_features, factor, offset, train, fill_values
 )
 
 train['credit_score'] = train_scores
@@ -737,16 +870,21 @@ print("=" * 70)
 print("\n10.1 核心影响因素分析:")
 
 # 获取正向和负向影响最大的特征
-positive_features = scorecard_df[scorecard_df['分数贡献'] > 0].head(5)
-negative_features = scorecard_df[scorecard_df['分数贡献'] < 0].head(5)
+coef_score_summary = pd.DataFrame({
+    '特征': final_features,
+    '系数': lr_model.coef_[0],
+    '平均分数影响': [-coef * factor for coef in lr_model.coef_[0]]
+}).sort_values('平均分数影响', key=abs, ascending=False)
+positive_features = coef_score_summary[coef_score_summary['平均分数影响'] > 0].head(5)
+negative_features = coef_score_summary[coef_score_summary['平均分数影响'] < 0].head(5)
 
 print("\n正向影响因素 (提高信用分数):")
 for _, row in positive_features.iterrows():
-    print(f"  - {row['特征']}: 贡献 +{row['分数贡献']:.2f} 分")
+    print(f"  - {row['特征']}: 平均影响 +{row['平均分数影响']:.2f} 分")
 
 print("\n负向影响因素 (降低信用分数):")
 for _, row in negative_features.iterrows():
-    print(f"  - {row['特征']}: 贡献 {row['分数贡献']:.2f} 分")
+    print(f"  - {row['特征']}: 平均影响 {row['平均分数影响']:.2f} 分")
 
 # 生成信用提升建议
 print("\n10.2 信用提升建议:")
@@ -794,7 +932,7 @@ print("=" * 70)
 # 计算测试集用户的信用分数
 print("\n11.1 计算测试集用户信用分数...")
 test_scores, test_proba = calculate_credit_score(
-    lr_model, scaler, final_features, factor, offset, test, fill_values
+    lr_model, scaler, woe_transformer, final_features, factor, offset, test, fill_values
 )
 
 test['credit_score'] = test_scores

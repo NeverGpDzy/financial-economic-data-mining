@@ -167,6 +167,13 @@ outputs/experiment3/**
 
 # LaTeX build artifacts
 report/**/build/
+*.aux
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.xdv
 
 # Credentials & secrets
 .env

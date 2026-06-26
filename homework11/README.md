@@ -22,7 +22,7 @@ python homework11/homework11_credit_scorecard.py
 4. **特征工程**：特征分箱 + WOE/IV值计算，筛选有效特征
 5. **模型构建**：逻辑回归模型训练，交叉验证
 6. **模型评估**：AUC、KS、准确率、精确率、召回率、F1，绘制ROC曲线和KS曲线
-7. **信用评分卡生成**：基于PDO和基础好坏比，将模型概率转换为信用评分
+7. **信用评分卡生成**：基于WOE分箱、PDO和基础好坏比，将模型概率转换为信用评分
 8. **测试集预测**：输出测试集用户信用分数、违约概率、信用等级
 9. **特征重要性分析**：挖掘核心影响因素，给出信用提升建议
 
@@ -42,7 +42,7 @@ python homework11/homework11_credit_scorecard.py
 - `credit_score_analysis.png`：信用分数分布、等级违约率、分数vs违约概率散点图
 
 **数据：**
-- `credit_scorecard.csv`：信用评分卡（特征系数与分数贡献）
+- `credit_scorecard.csv`：标准化信用评分卡（特征分箱、WOE、IV贡献、分箱分数）
 - `test_predictions.csv`：测试集预测结果（信用分数、违约概率、信用等级）
 - `model_evaluation_results.csv`：模型评估指标汇总
 - `feature_importance.csv`：特征重要性数据
@@ -59,6 +59,7 @@ python homework11/homework11_credit_scorecard.py
 | IV_THRESHOLD | 0.02 | IV值筛选阈值 |
 | CORR_THRESHOLD | 0.8 | 相关性剔除阈值 |
 | BASE_SCORE | 600 | 信用评分基础分 |
+| BASE_ODDS | 1 | 基础好坏比，600分对应中性评分点 |
 | PDO | 50 | Points to Double the Odds |
 | SCORE_MIN / SCORE_MAX | 300 / 850 | 评分范围 |
 
