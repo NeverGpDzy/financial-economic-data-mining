@@ -1,0 +1,28 @@
+\subsubsection{实验三 AI交互记录}\label{ux5b9eux9a8cux4e09-aiux4ea4ux4e92ux8bb0ux5f55}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  读取老师最新版实验指导书，定位''实验三 基于LGBM的证券市场非线性预测与羊群效应因子分析''章节。
+\item
+  检查仓库现有实验一、实验二代码和输出，确认实验三需要独立目录、独立输出和独立报告。
+\item
+  读取实验二 \texttt{weekly\_herd\_index.csv}，确认可用字段为 \texttt{trade\_date}、\texttt{P\_t}、\texttt{H1t}、\texttt{H2t}、\texttt{H3t}。
+\item
+  读取老师配套沪深300日度价格数据，按自然周取最后一个交易日收盘价并计算周收益率。
+\item
+  将羊群效应指标与周收益率按自然周内连接对齐，剔除缺失值并生成建模数据集。
+\item
+  构造 H3 滞后1到5期、3周/5周滚动均值和标准差、P\_t历史特征、月份和季度虚拟变量，确保不使用同期 H3 预测同期收益。
+\item
+  严格按时间顺序划分训练集和测试集，并只在训练窗口内部做简单参数选择。
+\item
+  训练正向 LGBM 模型，输出测试集 MSE、MAE、RMSE、R²、IC、方向准确率、预测结果和残差诊断。
+\item
+  计算 LightGBM Gain 特征重要性与 SHAP 值，生成 SHAP 特征重要性图和最优 H3 滞后因子的依赖图。
+\item
+  构建反向模型，用滞后沪深300收益率预测当期 H3，对比情绪到收益、收益到情绪两个方向的传导强度。
+\item
+  生成 CSV、SQLite、PNG 图表、Markdown 报告、PDF 报告、AI代码审查表和代码附录。
+\end{enumerate}

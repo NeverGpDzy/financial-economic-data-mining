@@ -1,0 +1,20 @@
+\subsubsection{实验二 AI交互记录}\label{ux5b9eux9a8cux4e8c-aiux4ea4ux4e92ux8bb0ux5f55}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  资料整理：读取老师最新版实验指导书，定位''实验二 金融非结构化数据情感分析''章节，并提取为 Markdown。
+\item
+  数据归档：复制老师发布的 Word、zip 原件，将配套原始数据放入 \texttt{data/experiment2/raw/}。
+\item
+  要求分析：确认实验二依赖实验一输出的周度情绪表，核心指标为 P\_t、E(P\_t)、H1、H2、H3。
+\item
+  公式实现：按正面/(正面+负面)重算 P\_t；用过去4周 P\_t 均值作为基准；计算 H1 情绪偏离。
+\item
+  H2方向处理：根据指导书''H2越小代表越一边倒''的解释，将 H2 实现为正负观点分歧度，并在 H3 中取反向强度。
+\item
+  结果输出：生成 \texttt{weekly\_herd\_index.csv}、SQLite数据库、质量检查、描述统计、Top羊群周、指标表截图和核心程序截图。
+\item
+  报告生成：生成 Markdown 摘要、LaTeX/PDF 标准实验报告、AI代码审查表和代码附录，保证可提交材料完整。
+\end{enumerate}
