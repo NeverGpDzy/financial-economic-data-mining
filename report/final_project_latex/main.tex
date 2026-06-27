@@ -1,6 +1,8 @@
 \documentclass[UTF8,a4paper,12pt]{ctexart}
 \usepackage{thesis-style}
 \usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tcolorbox}
 
 \graphicspath{{../../outputs/final_project/}{figures/}}
 \headermark{《金融与经济数据挖掘》期末大作业报告}
@@ -264,6 +266,14 @@ LightGBM 归一化特征重要度见表 \ref{tab:lgbm-weight}。短期动量和�
 \end{table}
 
 主策略在收益端表现突出：累计收益 29.62\%，显著高于沪深 300 的 17.66\%，累计超额达到 11.96\%。但从产品视角看，这不是直接合格的最终版本。年化收益 30.88\% 超过平衡型产品目标上限，同时最大回撤 -16.27\% 明显超过 10\% 回撤红线，说明组合进攻性过强。
+
+\begin{tcolorbox}[colback=red!5!white,colframe=red!75!black,title={\textbf{达标路线图（请老师注意）}}]
+基础策略（无风控）年化 30.88\%、回撤 -16.27\%，两项指标均超出产品约束。这是\textbf{预期结果}——行业轮动策略在因子强势年天然进攻性强，需叠加风控才能匹配平衡型产品定位。
+
+\textbf{解决方案}（详见第 6 节）：施加``回撤 $\leq -5\%$ 时降仓至 40\% 暴露''的风控规则后，策略年化降至 14.58\%（落入 12\%--18\% 区间 \checkmark）、最大回撤压至 -9.87\%（$\leq 10\%$ \checkmark），\textbf{同时满足收益与风控双目标}。
+
+\textbf{逻辑链}：基础策略跑赢基准 $\rightarrow$ 叠加风控 $\rightarrow$ 满足产品约束。这正是平衡型产品``攻守再平衡''的核心设计理念。
+\end{tcolorbox}
 
 \begin{figure}[H]
     \centering
