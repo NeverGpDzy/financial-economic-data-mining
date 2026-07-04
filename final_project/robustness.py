@@ -85,10 +85,10 @@ def run_risk_control_spectrum(base_result: BacktestResult) -> dict:
     """模块4 风险控制：回撤触发减仓的收益-回撤权衡谱系。"""
     configs = [
         ("base_no_rc", None, None, None),
-        ("trig-5%_exp50%", -0.05, 0.5, -0.02),
-        ("trig-5%_exp40%", -0.05, 0.4, -0.02),
-        ("trig-4%_exp50%", -0.04, 0.5, -0.02),
-        ("trig-4%_exp40%", -0.04, 0.4, -0.02),
+        ("trig-5%_exp50%_rec-2%", -0.05, 0.5, -0.02),
+        ("trig-5%_exp40%_rec-2%", -0.05, 0.4, -0.02),
+        ("trig-4%_exp40%_rec-2.5%", -0.04, 0.4, -0.025),
+        ("trig-4.5%_exp40%_rec-3%", -0.045, 0.4, -0.03),
     ]
     rows = []
     results = {}

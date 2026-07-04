@@ -3,7 +3,7 @@
 2026 春《金融与经济数据挖掘》期末大作业。以申万一级 31 个行业指数为标的，构建行业轮动多因子量化策略：
 四因子计算 → Z-Score 标准化 → IC/IR+共线性双质检 → LGBM 赋权 → 月末截面打分 → 样本外回测 → 风控与鲁棒性。
 
-作业原始要求（原封不动提取）见 [assignment.md](assignment.md)，完整学期报告见 `outputs/final_project/report.md`（及同名 `.docx`）。
+作业原始要求（原封不动提取）见 [assignment.md](assignment.md)，完整学期报告使用 LaTeX 编写，源文件见 `report/final_project_latex/`。
 
 ## 运行方法
 
@@ -12,12 +12,9 @@
 ```powershell
 # 全流程：数据→因子→双质检→LGBM→回测→鲁棒性→风控→图表→报告
 python -m final_project.main
-
-# 额外生成 Word 报告（提交用）
-python -m final_project.main --build-docx
 ```
 
-依赖：`pandas numpy scipy scikit-learn lightgbm matplotlib python-docx`（见根目录 `requirements.txt`）。
+依赖：`pandas numpy scipy scikit-learn lightgbm matplotlib`（见 `final_project/requirements.txt`；提交包根目录也放置同一份）。
 
 ## 数据来源
 
@@ -47,7 +44,7 @@ final_project/
 ├── backtest.py            # 月度轮动回测引擎 + 回撤减仓风控 + 核心指标
 ├── robustness.py          # 参数/时间/方法敏感性 + 风控谱系
 ├── viz.py                 # 因子质检/LGBM/回测/鲁棒性图表
-├── report.py              # 学期报告Markdown + Word(.docx) + AI审核表/交互记录
+├── report.py              # 学期报告Markdown + AI审核表/交互记录
 └── main.py                # 全流程编排入口
 ```
 
@@ -58,29 +55,29 @@ final_project/
 - **赋权打分（1.3.3）**：LGBM回归(预测下月收益)特征重要度为权重，按样本内IC符号定向，综合得分=Σ(权重×方向×z)；月末选Top5等权。
 - **回测（1.3.4/1.3.5）**：月末收盘生成信号(行业指数仅收盘价)、等权Top5(单行业≤30%)、单边佣金万分之三按|Δ权重|计入、日频复利、基准沪深300；严格按前瞻收益月份划分样本，无未来函数。
 - **样本划分**：样本内2023-02~2024-12（23月713条，训练+质检）；样本外2025全年（12月，达标验证）。
-- **风控（模块4）**：回撤触发减仓谱系，证实可在-5%触发/40%暴露下同时满足12%-18%收益与≤10%回撤双目标。
+- **风控（模块4）**：回撤触发减仓谱系，证实可在 -4.5% 触发、40% 暴露、-3% 恢复阈值下同时满足12%-18%收益与≤10%回撤双目标。
 - **鲁棒性（模块5）**：Top3 vs Top5、2024 vs 2025、综合得分 vs LGBM直接预测三组对比。
 
 ## 关键结果（2025样本外，LGBM综合得分Top5）
 
-| 指标 | 基础策略（无风控） | 风控后（trig-5%_exp40%） |
+| 指标 | 基础策略（无风控） | 风控后（trig-4.5%_exp40%_rec-3%） |
 | --- | ---: | ---: |
-| 累计收益 | 29.62% | 14.03% |
-| 年化收益 | 30.88% | 14.58% |
-| 最大回撤 | -16.27% | -9.87% |
-| 夏普比率 | 1.345 | 0.965 |
+| 累计收益 | 29.62% | 13.98% |
+| 年化收益 | 30.88% | 14.53% |
+| 最大回撤 | -16.27% | -9.41% |
+| 夏普比率 | 1.345 | 0.985 |
 | 沪深300年化 | 18.37% | 18.37% |
-| 相对超额(累计) | +11.96% | -3.63% |
+| 相对超额(累计) | +11.96% | -3.69% |
 | 达标[年化12-18%] | ✗（偏高） | ✓ |
 | 达标[回撤≤10%] | ✗（破红线） | ✓ |
 
-**达标路线图**：基础策略年化30.88%、回撤-16.27%，两项均超出产品约束（预期结果——行业轮动策略在因子强势年天然进攻性强）。叠加"回撤≤-5%时降仓至40%暴露"的风控规则后，年化降至14.58%（落入12%-18%区间）、回撤压至-9.87%（≤10%），**同时满足双目标**。逻辑链：基础策略跑赢基准 → 叠加风控 → 满足产品约束。
+**达标路线图**：基础策略年化30.88%、回撤-16.27%，两项均超出产品约束（预期结果——行业轮动策略在因子强势年天然进攻性强）。叠加"回撤≤-4.5%时降仓至40%暴露、回撤恢复至-3%时回补"的风控规则后，年化降至14.53%（落入12%-18%区间）、回撤压至-9.41%（≤10%），**同时满足双目标**。逻辑链：基础策略跑赢基准 → 叠加风控 → 满足产品约束。
 
 ## 输出文件
 
 全部产出在 `outputs/final_project/`：
 
-- **报告**：`report.md`、`202331060205_丁致宇_期末大作业.docx`、`AI代码审核表.md`、`AI交互记录.md`
+- **报告与附件**：`report.md`、`AI代码审核表.md`、`AI交互记录.md`；正式报告 PDF 由 `report/final_project_latex/main.tex` 生成。
 - **图表**：`ic_ir.png`、`collinearity.png`、`lgbm_importances.png`、`nav_primary.png`、`drawdown_primary.png`、`monthly_primary.png`、`holdings_primary.png`、`robustness_parameter.png`、`robustness_time.png`、`risk_spectrum.png`
 - **数据**：`factor_panel.csv`、`ic_summary.csv`、`ic_series.csv`、`corr_matrix.csv`、`lgbm_importances.csv`、`lgbm_cv_metrics.csv`、`nav_primary.csv`、`monthly_primary.csv`、`holdings_primary.csv`、`metrics_primary.csv`、`robustness_*.csv`、`risk_control_spectrum.csv`
 

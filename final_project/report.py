@@ -1,4 +1,4 @@
-"""报告生成：组装学期报告 Markdown 与 Word(.docx)。
+"""报告生成：组装学期报告 Markdown 与 AI 审核材料。
 
 报告结构遵循作业模板：
   一、报告目的（模块1：商业逻辑、客户匹配、产品定位、模型选型）
@@ -101,7 +101,7 @@ def _metrics_table(r: BacktestResult) -> str:
 
 
 def _ai_review_rows() -> list[tuple[str, str, str, str]]:
-    """AI 代码审核表条目，供 Markdown 与 Word 复用。"""
+    """AI 代码审核表条目，供 Markdown 与 LaTeX 附录复用。"""
     return [
         ("data_loader.py / factors.py", "数据加载、四因子计算、前瞻收益对齐",
          "已核查月末因子仅使用历史行情；按 fwd_date 划分训练/回测，避免 2024-12 信号的 2025-01 收益进入训练集。",
@@ -116,8 +116,8 @@ def _ai_review_rows() -> list[tuple[str, str, str, str]]:
          "原风控减仓只缩放收益，未扣除降仓/恢复仓产生的额外换手成本，达标版本偏乐观。",
          "已修复：暴露变化按 cost_rate 计入 risk_control_turnover / risk_control_cost，并汇总到月度成本。"),
         ("main.py / report.py", "提交材料与报告生成",
-         "原 AI 审核表和交互记录末尾字符串未拼接导致截断，且 Word 报告未包含 AI 审核/交互记录。",
-         "已修复：补全字符串拼接，并将 AI 审核表、交互记录写入 Markdown 与 Word 报告。"),
+         "原 AI 审核表和交互记录末尾字符串未拼接导致截断，且 LaTeX 附录未完整纳入 AI 审核/交互记录。",
+         "已修复：补全字符串拼接，并将 AI 审核表、交互记录写入 Markdown 与 LaTeX 附录。"),
         ("backtest.py / report.py", "交易执行口径",
          "配套行业行情无 open 字段，无法严格模拟“次日开盘成交”。",
          "已说明：采用月末收盘到次月末收盘的收盘价代理口径，并在报告中明确数据限制。"),
@@ -125,15 +125,15 @@ def _ai_review_rows() -> list[tuple[str, str, str, str]]:
 
 
 def _ai_interaction_items() -> list[tuple[str, str]]:
-    """AI 交互记录摘要条目，供 Markdown 与 Word 复用。"""
+    """AI 交互记录摘要条目，供 Markdown 与 LaTeX 附录复用。"""
     return [
-        ("需求理解与数据导入", "读取期末大作业 docx 要求与三份配套 CSV，确认任务为申万一级行业轮动多因子策略全流程。"),
+        ("需求理解与数据导入", "读取期末大作业课程要求与三份配套 CSV，确认任务为申万一级行业轮动多因子策略全流程。"),
         ("数据与因子核查", "核对 31 行业、787 个交易日、PB 与行情代码一致；确认 60/20 日动量、月末 PB、20 日成交额占比和 Z-Score 标准化口径。"),
         ("未来函数修复", "发现按 signal_date 划分会把 2024-12 信号的 2025-01 前瞻收益泄漏到训练集，改为按 fwd_date 划分。"),
         ("因子质检修复", "发现 kept_factors 未进入建模路径，修复为质检结果驱动 LGBM 训练与综合打分。"),
         ("验证方法修复", "发现 GroupKFold 不满足时间序列验证要求，改为训练月早于验证月的扩展窗口交叉验证。"),
         ("风控成本修复", "发现回撤减仓未计入额外换手成本，补充 risk_control_turnover 与 risk_control_cost，并输出最终风控版指标。"),
-        ("报告与提交修复", "补全 AI 审核/交互记录文本，将其写入 Word 报告，并填写老师提供的 AI 代码审查与修复表。"),
+        ("报告与提交修复", "补全 AI 审核/交互记录文本，将其写入 LaTeX 附录，并填写老师提供的 AI 代码审查与修复表。"),
     ]
 
 
@@ -264,7 +264,7 @@ def build_report_md(ctx: dict) -> str:
     L.append("**交易风控体系**：① 仓位限制——单行业≤30%（Top5 等权 20% 不触发，Top3 触发后超出部分留现金）；"
              "② 回撤触发减仓——净值回撤超阈值时降仓至部分暴露，恢复后回补；③ 单行业止损——单行业月内跌幅超阈值则止损退出；"
              "④ 极端行情应对——全市场急跌时整体降仓。\n")
-    L.append("**风控实证**：对主回测施加“回撤≤-5%降仓”规则，谱系如下：\n")
+    L.append("**风控实证**：对主回测施加“回撤触发降仓”规则，谱系如下：\n")
     L.append(_df_to_md(_disp(rob["risk_control"]["table"])))
     L.append("\n![风险控制谱系](risk_spectrum.png)\n")
     rc = rob["risk_control"]["table"]
@@ -361,177 +361,3 @@ def build_ai_interaction_md() -> str:
            "AI 承担代码实现、口径核对、审查记录整理与文档生成辅助。\n")
     return md
 
-
-# --------------------------------------------------------------------------- #
-# Word(.docx) 生成
-# --------------------------------------------------------------------------- #
-def _doc_add_table(doc, df: pd.DataFrame, floatfmt=".4f"):
-    """向 docx 添加 DataFrame 表格。"""
-    rows, cols = df.shape
-    cols_list = list(df.columns)
-    table = doc.add_table(rows=rows + 1, cols=cols)
-    table.style = "Light Grid Accent 1"
-    for j, c in enumerate(cols_list):
-        table.cell(0, j).text = str(c)
-    for i in range(rows):
-        for j, c in enumerate(cols_list):
-            v = df.iloc[i, j]
-            if isinstance(v, float):
-                txt = f"{v:{floatfmt}}"
-            elif isinstance(v, bool):
-                txt = "✓" if v else "✗"
-            else:
-                txt = str(v)
-            table.cell(i + 1, j).text = txt
-
-
-def build_docx(ctx: dict, out_path: Path):
-    """从 ctx 直接生成 Word 报告（含图表）。"""
-    from docx import Document
-    from docx.shared import Inches
-
-    qc = ctx["qc"]
-    model = ctx["model_result"]
-    directions = ctx["directions"]
-    primary = ctx["primary"]
-    rob = ctx["robustness"]
-    imp = model["importances"]
-    ics = qc["ic_summary"]
-    factor_cols = model["factor_cols"]
-    out_dir: Path = ctx["output_dir"]
-
-    doc = Document()
-    doc.add_heading("期末大作业：金融与经济数据挖掘 —— 行业轮动多因子量化策略", level=0)
-    doc.add_paragraph(f"学号：{cfg.STUDENT_ID}　　姓名：{cfg.STUDENT_NAME}　　课程：金融与经济数据挖掘　　学期：2026 春")
-
-    def img(name, width=6.2):
-        p = out_dir / name
-        if p.exists():
-            doc.add_picture(str(p), width=Inches(width))
-
-    # 一、报告目的
-    doc.add_heading("一、报告目的", level=1)
-    doc.add_heading("1.1 产品哲学与客户匹配", level=2)
-    doc.add_paragraph(
-        "本项目以“蜀信基金管理有限公司·量化投资部大数据量化组”研究员身份，研发平衡型行业轮动增强基金。"
-        "产品定位中等风险、长期理财，目标客户为风险承受中等、投资期限 1 年以上的职场与家庭理财客户，"
-        "核心约束：年化收益 12%–18%、最大回撤不超过 10%。策略以申万一级 31 个行业指数为标的，"
-        "将行业板块视作独立大类资产，模拟行业 ETF 一篮子持仓开展月度轮动。")
-    doc.add_heading("1.2 投资逻辑与收益来源", level=2)
-    doc.add_paragraph(
-        "收益来源于行业中期景气动量、估值均值回复、资金关注度溢价。通过 Z-Score 截面标准化、IC/IR 与共线性双质检、"
-        "LGBM 赋权融合四因子非线性信息，月末选 Top5 行业等权配置、月度调仓。")
-    doc.add_heading("1.3 模型选型理由", level=2)
-    doc.add_paragraph(
-        "多因子框架可解释、便于质检维护；行业指数数量适中、数据公开；LGBM 赋权捕捉非线性组合与交互；"
-        "月度调仓匹配中等风险客户对换手与稳定性的要求。")
-
-    # 二、报告步骤与结果
-    doc.add_heading("二、报告步骤与结果", level=1)
-    doc.add_heading("2.1 数据获取与因子计算", level=2)
-    doc.add_paragraph(
-        "数据：教师配套申万一级 31 行业日行情/日度 PB/沪深 300 日行情，区间 2022-10-10~2025-12-31 共 787 交易日，无缺失。"
-        f"样本划分（按前瞻收益月份，杜绝未来函数）：样本内 2023-02~2024-12 共 23 月 713 条；样本外 2025 全年 {primary.metrics['n_months']} 月。")
-    doc.add_paragraph("四因子：景气度(mom_mid,60日累计涨跌)、估值(pb,月末PB-LF)、动量(mom_short,20日累计涨跌)、"
-                      "资金流(flow,20日成交额占比)。月末跨31行业Z-Score标准化。")
-    doc.add_paragraph("回测规则：月末收盘生成信号执行；Top5等权各20%（单行业≤30%）；单边佣金万分之三按|Δ权重|计入；日频复利；基准沪深300。")
-
-    doc.add_heading("2.2 因子双质检：IC/IR + 共线性", level=2)
-    ic_df = ics.copy()
-    ic_df.insert(0, "因子", [cfg.FACTOR_LABELS[f.replace("_z", "")] for f in ic_df.index])
-    ic_df = ic_df.reset_index(drop=True)[["因子", "ic_mean", "ic_std", "ir", "ic_positive_rate"]]
-    ic_df.columns = ["因子", "IC均值", "IC标准差", "IR", "IC胜率"]
-    _doc_add_table(doc, ic_df, floatfmt=".3f")
-    doc.add_paragraph(f"共线性：最高为 mom_mid 与 mom_short 的 {qc['corr_matrix'].loc['mom_mid_z','mom_short_z']:.2f}，"
-                      f"低于阈值 {cfg.COLLINEAR_THRESHOLD}，无高度共线因子，保留全部4因子。样本内IC偏弱（最强PB IR={ics.loc['pb_z','ir']:.2f}），"
-                      "反映2023-2024行业轮动信号弱、风格切换频繁，是引入LGBM与风控的依据。")
-    img("collinearity.png")
-    img("ic_ir.png")
-
-    doc.add_heading("2.3 LGBM 因子赋权与截面打分", level=2)
-    doc.add_paragraph(f"LGBM回归，X=质检后保留的{len(factor_cols)}个因子Z-Score，y=下月前瞻收益，713条样本，小模型防过拟合。"
-                      f"按月时间顺序扩展窗口{model['cv_metrics'].shape[0]}折：平均R²={model['cv_metrics']['r2'].mean():.3f}，CV预测秩IC={model['cv_pred_rank_ic']:.3f}。")
-    w_df = pd.DataFrame({
-        "因子": [cfg.FACTOR_LABELS[f.replace("_z", "")] for f in factor_cols],
-        "重要度": [imp[f] for f in factor_cols],
-        "IC方向": [int(directions[f]) for f in factor_cols],
-        "定向后权重": [(imp * directions)[f] for f in factor_cols],
-    })
-    _doc_add_table(doc, w_df, floatfmt=".4f")
-    doc.add_paragraph("打分：综合得分=Σ(重要度×IC方向×z)；月末按score降序选Top5等权。LGBM直接预测作方法敏感性对照。")
-    img("lgbm_importances.png")
-
-    doc.add_heading("2.4 回测结果与分析", level=2)
-    M = primary.metrics
-    m_df = pd.DataFrame({
-        "指标": ["累计收益率", "年化收益率", "最大回撤", "夏普比率", "日胜率",
-                "沪深300年化", "相对超额(累计)", "月度跑赢胜率", "总换手(倍)", "总成本",
-                "达标:年化12%-18%", "达标:回撤≤10%"],
-        "数值": [pct(M["cumulative_return"]), pct(M["annualized_return"]), pct(M["max_drawdown"]),
-                num(M["sharpe"]), pct(M["daily_win_rate"]), pct(M["benchmark_annualized"]),
-                pct(M["excess_cumulative"]), pct(M["monthly_win_rate_vs_bench"]),
-                num(M["total_turnover"], 1), pct(M["total_cost"]),
-                "✓" if M["target_return_ok"] else "✗", "✓" if M["target_dd_ok"] else "✗"],
-    })
-    _doc_add_table(doc, m_df, floatfmt=".4f")
-    img("nav_primary.png")
-    img("drawdown_primary.png")
-    img("monthly_primary.png")
-    img("holdings_primary.png")
-    doc.add_paragraph(
-        f"基准对比：策略累计{pct(M['cumulative_return'])}跑赢沪深300的{pct(M['benchmark_cumulative'])}，超额{pct(M['excess_cumulative'])}，"
-        f"夏普{num(M['sharpe'])}。2025短期动量恢复有效(IR=+0.36)，综合得分予其最高权重({imp['mom_short_z']:.2f})，成功捕捉轮动alpha。"
-        f"达标判断：未同时满足——年化{pct(M['annualized_return'])}超区间(偏高)，回撤{pct(M['max_drawdown'])}破10%红线，源于5行业集中持仓在风格切换月共振下跌。")
-
-    doc.add_heading("2.5 模型维护与风险控制", level=2)
-    doc.add_paragraph("风险识别：风格切换(2024回撤-19%)、因子失效(中期动量2025由正转负)、行业黑天鹅、集中度风险。"
-                      "定期维护：因子IC月度跟踪、景气度季度复检、LGBM半年度重训练、换手成本监控。"
-                      "交易风控：单行业≤30%、回撤触发减仓、单行业止损、极端行情降仓。")
-    _doc_add_table(doc, _disp(rob["risk_control"]["table"]))
-    img("risk_spectrum.png")
-    rc = rob["risk_control"]["table"]
-    rc_meet = rc[(rc["target_return_ok"]) & (rc["target_dd_ok"])]
-    if len(rc_meet):
-        selected = rob["risk_control"].get("selected")
-        row = rc[rc["config"].eq(selected)].iloc[0] if selected in set(rc["config"]) else rc_meet.iloc[0]
-        doc.add_paragraph(f"实证：{row['config']}规则可将年化压至{pct(row['annualized_return'])}、回撤压至{pct(row['max_drawdown'])}，"
-                          f"同时满足双目标，总成本{pct(row['total_cost'])}，代价是强势年牺牲超额{pct(row['excess_cumulative'])}。揭示平衡型产品进攻与防守的权衡。")
-
-    doc.add_heading("2.6 鲁棒性与迭代优化", level=2)
-    doc.add_paragraph("参数敏感性(Top3 vs Top5)：")
-    _doc_add_table(doc, _disp(rob["parameter"]["table"]))
-    doc.add_paragraph("时间敏感性(2024 vs 2025)：")
-    _doc_add_table(doc, _disp(rob["time"]["table"]))
-    doc.add_paragraph("打分方法敏感性(综合 vs 直接)：")
-    _doc_add_table(doc, _disp(rob["method"]["table"]))
-    doc.add_paragraph(
-        "结论：Top5优于Top3(更稳)；两年度并非均跑赢基准(2024跑输、2025跑赢)，策略机制依赖；两种LGBM打分均跑赢基准，方法稳健。"
-        "迭代方向：引入机制识别(波动率状态/因子动量)动态调权，提升跨周期稳定性。")
-
-    # 三、报告总结
-    doc.add_heading("三、报告总结", level=1)
-    doc.add_heading("3.1 内容总结", level=2)
-    doc.add_paragraph(
-        f"完整落地行业轮动多因子全流程。主回测2025样本外年化{pct(M['annualized_return'])}、回撤{pct(M['max_drawdown'])}、"
-        f"夏普{num(M['sharpe'])}，跑赢沪深300 {pct(M['excess_cumulative'])}。双质检保留4因子，LGBM以短期动量权重最高。"
-        "鲁棒性揭示机制依赖与参数稳健；风控实证证明回撤减仓可同时满足双目标。")
-    doc.add_heading("3.2 心得体会", level=2)
-    for t in [
-        "因子有效性是动态的：样本内弱、样本外短期动量复活、中期反转，机制切换是最大风险，须IC月度跟踪与模型重训练。",
-        "双质检的价值在诚实：IC弱不丢人，关键是数据说话、不掩盖；保留全因子交LGBM非线性组合比硬凑高IC更扎实。",
-        "收益与风控的根本权衡：激进跑赢基准却破回撤红线，加风控守稳却让渡超额；平衡型产品本质是攻守动态再平衡。",
-        "工程严谨性：按前瞻收益月份划分样本杜绝未来函数、月末收盘执行对齐信号、时间顺序扩展窗口CV、换手计入成本，决定回测可信度。",
-        "AI协作：全程AI辅助编程与审核，关键决策(因子口径/样本划分/达标判断)由本人基于课程知识独立完成并核验。",
-    ]:
-        doc.add_paragraph(t, style="List Number")
-    doc.add_heading("四、AI代码审核与交互记录", level=1)
-    doc.add_heading("4.1 AI代码审核与修复表", level=2)
-    review_df = pd.DataFrame(_ai_review_rows(), columns=["模块", "功能", "审核要点", "审核结论与修复"])
-    _doc_add_table(doc, review_df)
-    doc.add_heading("4.2 AI交互记录", level=2)
-    interaction_df = pd.DataFrame(_ai_interaction_items(), columns=["节点", "内容"])
-    _doc_add_table(doc, interaction_df)
-    doc.add_paragraph("风险提示：本策略仅用于课程学习与方法实验，回测不代表未来收益，不构成投资建议。")
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    doc.save(str(out_path))

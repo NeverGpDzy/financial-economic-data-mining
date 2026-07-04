@@ -217,6 +217,9 @@ credentials.json
 .DS_Store
 Thumbs.db
 
+# MiMoCode local workspace
+.mimocode/
+
 # Local QA previews and obsolete drafts
 outputs/homework4b/ppt_preview*/
 outputs/homework4b/*before_polish.pptx

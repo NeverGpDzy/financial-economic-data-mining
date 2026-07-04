@@ -2,7 +2,6 @@
 
 用法（仓库根目录）：
     python -m final_project.main                # 运行全流程，产出图表/数据/报告
-    python -m final_project.main --build-docx   # 额外生成 Word 报告
     python -m final_project.main --refresh      # 强制重算（默认即重算）
 """
 
@@ -21,7 +20,7 @@ from .data_loader import load_market
 from .factors import build_factor_panel, filter_panel
 from .model import composite_score, ic_directions, train_lgbm
 from .quality import run_quality_check
-from .report import build_ai_interaction_md, build_ai_review_md, build_docx, build_report_md
+from .report import build_ai_interaction_md, build_ai_review_md, build_report_md
 from .robustness import run_all
 
 warnings.filterwarnings("ignore")  # 屏蔽 lightgbm 特征名提示等无关警告
@@ -33,7 +32,7 @@ def _save_csv(df: pd.DataFrame, path: Path, **kw):
     print(f"  · {path.name}")
 
 
-def main(with_docx: bool = False):
+def main():
     out_dir = cfg.OUTPUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"输出目录：{out_dir}")
@@ -130,11 +129,6 @@ def main(with_docx: bool = False):
     (out_dir / "AI交互记录.md").write_text(build_ai_interaction_md(), encoding="utf-8")
     print("  · report.md / AI代码审核表.md / AI交互记录.md")
 
-    if with_docx:
-        docx_path = out_dir / f"{cfg.STUDENT_ID}_{cfg.STUDENT_NAME}_期末大作业.docx"
-        build_docx(ctx, docx_path)
-        print(f"  · {docx_path.name}")
-
     # 控制台摘要
     print("\n" + "=" * 70)
     print("主回测（2025 样本外，LGBM综合得分 Top5）")
@@ -148,7 +142,6 @@ def main(with_docx: bool = False):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="期末大作业：行业轮动多因子策略")
-    ap.add_argument("--build-docx", action="store_true", help="生成 Word 报告")
     ap.add_argument("--refresh", action="store_true", help="强制重算（默认即重算）")
     args = ap.parse_args()
-    main(with_docx=args.build_docx)
+    main()

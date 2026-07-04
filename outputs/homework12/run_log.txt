@@ -109,10 +109,10 @@ max    1045409.00   63.00           498.00  ...       78446.00    2015.00    1.0
 已将 '?' 标记替换为 NaN
 
 [缺失值处理]
-  collision_type: 用众数 'Rear Collision' 填充
-  property_damage: 用众数 'NO' 填充
-  police_report_available: 用众数 'NO' 填充
-  authorities_contacted: 用众数 'Police' 填充
+  collision_type: 用训练集众数 'Rear Collision' 填充
+  property_damage: 用训练集众数 'NO' 填充
+  police_report_available: 用训练集众数 'NO' 填充
+  authorities_contacted: 用训练集众数 'Police' 填充
 
 缺失值总计: 972 -> 0
 
@@ -225,22 +225,22 @@ number_of_vehicles_involved       1.99       1.83  9.19
 特征工程后测试集维度: (300, 49)
 
 [特征编码与标准化]
-  分类特征 (17): ['collision_type', 'police_report_available', 'insured_occupation', 'auto_make', 'incident_state', 'incident_type', 'insured_relationship', 'incident_severity', 'insured_sex', 'property_damage', 'authorities_contacted', 'insured_hobbies', 'policy_csl', 'insured_education_level', 'incident_city', 'auto_model', 'policy_state']
+  分类特征 (17): ['auto_model', 'incident_city', 'incident_severity', 'auto_make', 'insured_sex', 'incident_type', 'insured_relationship', 'insured_hobbies', 'policy_state', 'insured_occupation', 'collision_type', 'policy_csl', 'property_damage', 'insured_education_level', 'authorities_contacted', 'police_report_available', 'incident_state']
   数值特征 (27): 共27个
 
 [冗余特征检测（相关性阈值=0.85）]
   检测到 10 对高相关特征:
-    policy_tenure_days <-> policy_bind_year: 0.999
-    customer_months <-> age: 0.916
     witnesses <-> multi_witness: 0.893
-    claim_to_premium_ratio <-> vehicle_claim: 0.864
-    total_claim_amount <-> vehicle_claim: 0.978
-    total_claim_amount <-> claim_to_premium_ratio: 0.892
-    bodily_injuries <-> multi_injury: 0.866
-    incident_year <-> incident_month: 0.982
-    umbrella_limit <-> has_umbrella: 0.957
     vehicle_age <-> auto_year: 0.998
-  剔除 9 个冗余特征: ['vehicle_claim', 'has_umbrella', 'multi_witness', 'multi_injury', 'auto_year', 'policy_bind_year', 'claim_to_premium_ratio', 'age', 'incident_month']
+    customer_months <-> age: 0.916
+    vehicle_claim <-> claim_to_premium_ratio: 0.864
+    has_umbrella <-> umbrella_limit: 0.957
+    total_claim_amount <-> claim_to_premium_ratio: 0.892
+    total_claim_amount <-> vehicle_claim: 0.978
+    incident_month <-> incident_year: 0.982
+    multi_injury <-> bodily_injuries: 0.866
+    policy_tenure_days <-> policy_bind_year: 0.999
+  剔除 9 个冗余特征: ['claim_to_premium_ratio', 'umbrella_limit', 'multi_witness', 'vehicle_claim', 'policy_bind_year', 'incident_year', 'auto_year', 'age', 'bodily_injuries']
 
 最终特征数: 44
 
@@ -254,15 +254,15 @@ number_of_vehicles_involved       1.99       1.83  9.19
 
 [模型1: 逻辑回归]
   最佳参数: {'C': 1.0, 'class_weight': 'balanced'}
-  最佳CV AUC: 0.7203
+  最佳CV AUC: 0.7205
 
 [模型2: 决策树]
   最佳参数: {'class_weight': None, 'max_depth': 5, 'min_samples_leaf': 10, 'min_samples_split': 5}
-  最佳CV AUC: 0.8416
+  最佳CV AUC: 0.8394
 
 [模型3: 随机森林]
-  最佳参数: {'class_weight': 'balanced_subsample', 'max_depth': 8, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200}
-  最佳CV AUC: 0.7795
+  最佳参数: {'class_weight': 'balanced', 'max_depth': 5, 'min_samples_leaf': 1, 'min_samples_split': 5, 'n_estimators': 100}
+  最佳CV AUC: 0.7772
 
 ======================================================================
 第六步：模型评估
@@ -271,21 +271,21 @@ number_of_vehicles_involved       1.99       1.83  9.19
 [模型评估指标汇总]
 
   逻辑回归:
-    精确率: 0.5714
-    召回率: 0.6667
-    F1值:   0.6154
-    AUC:    0.7866 (CV: 0.7486 ± 0.0337)
-    准确率: 0.7857
+    精确率: 0.5476
+    召回率: 0.6389
+    F1值:   0.5897
+    AUC:    0.7909 (CV: 0.7414 ± 0.0453)
+    准确率: 0.7714
     AUC可用: [OK] 达标
     混淆矩阵:
-      TN=86, FP=18
-      FN=12, TP=24
+      TN=85, FP=19
+      FN=13, TP=23
 
   决策树:
     精确率: 0.6897
     召回率: 0.5556
     F1值:   0.6154
-    AUC:    0.8608 (CV: 0.8194 ± 0.0438)
+    AUC:    0.8630 (CV: 0.8208 ± 0.0437)
     准确率: 0.8214
     AUC可用: [OK] 达标
     混淆矩阵:
@@ -293,21 +293,21 @@ number_of_vehicles_involved       1.99       1.83  9.19
       FN=16, TP=20
 
   随机森林:
-    精确率: 0.5000
-    召回率: 0.2222
-    F1值:   0.3077
-    AUC:    0.8205 (CV: 0.7843 ± 0.0098)
-    准确率: 0.7429
+    精确率: 0.6389
+    召回率: 0.6389
+    F1值:   0.6389
+    AUC:    0.8275 (CV: 0.7788 ± 0.0079)
+    准确率: 0.8143
     AUC可用: [OK] 达标
     混淆矩阵:
-      TN=96, FP=8
-      FN=28, TP=8
+      TN=91, FP=13
+      FN=13, TP=23
 
 [指标汇总表]
   模型    精确率    召回率    F1值    AUC    准确率  CV AUC均值  CV AUC标准差 AUC可用(AUC>=0.7)
-逻辑回归 0.5714 0.6667 0.6154 0.7866 0.7857    0.7486     0.0337            [OK]
- 决策树 0.6897 0.5556 0.6154 0.8608 0.8214    0.8194     0.0438            [OK]
-随机森林 0.5000 0.2222 0.3077 0.8205 0.7429    0.7843     0.0098            [OK]
+逻辑回归 0.5476 0.6389 0.5897 0.7909 0.7714    0.7414     0.0453            [OK]
+ 决策树 0.6897 0.5556 0.6154 0.8630 0.8214    0.8208     0.0437            [OK]
+随机森林 0.6389 0.6389 0.6389 0.8275 0.8143    0.7788     0.0079            [OK]
 
 指标汇总表已保存至 outputs/homework12/model_evaluation_results.csv
 
@@ -317,28 +317,28 @@ ROC/AUC曲线已保存至 outputs/homework12/roc_auc_curves.png
 特征重要性图已保存至 outputs/homework12/feature_importance.png
 
 [Top 10 重要特征（随机森林）]
-  incident_severity_1: 0.0703
-  insured_hobbies: 0.0624
-  incident_severity_2: 0.0603
-  total_claim_amount: 0.0553
-  injury_claim: 0.0494
-  property_claim: 0.0437
-  injury_claim_ratio: 0.0430
-  insured_zip: 0.0405
-  customer_months: 0.0379
-  policy_annual_premium: 0.0345
+  incident_severity_Minor Damage: 0.1118
+  total_claim_amount: 0.0742
+  incident_severity_Total Loss: 0.0712
+  insured_hobbies: 0.0695
+  injury_claim: 0.0488
+  property_claim: 0.0449
+  injury_claim_ratio: 0.0393
+  policy_tenure_days: 0.0363
+  customer_months: 0.0362
+  policy_annual_premium: 0.0328
 
 [Top 10 逻辑回归系数（按绝对值）]
-  incident_severity_1: -2.2006 (低风险)
-  incident_severity_2: -2.1451 (低风险)
-  incident_severity_3: -2.1145 (低风险)
-  total_claim_amount: 0.4659 (高风险)
-  incident_state: 0.2280 (高风险)
-  injury_claim_ratio: -0.2262 (低风险)
-  property_claim: -0.2252 (低风险)
-  incident_type_2: -0.1927 (低风险)
-  witnesses: 0.1791 (高风险)
-  policy_deductable: 0.1743 (高风险)
+  incident_severity_Minor Damage: -2.1894 (低风险)
+  incident_severity_Total Loss: -2.1332 (低风险)
+  incident_severity_Trivial Damage: -2.0909 (低风险)
+  total_claim_amount: 0.4747 (高风险)
+  property_claim: -0.2234 (低风险)
+  incident_state: 0.2195 (高风险)
+  injury_claim_ratio: -0.2188 (低风险)
+  witnesses: 0.1841 (高风险)
+  policy_deductable: 0.1839 (高风险)
+  incident_type_Single Vehicle Collision: -0.1679 (低风险)
 
 ======================================================================
 第七步：数据可视化
@@ -376,8 +376,9 @@ ROC/AUC曲线已保存至 outputs/homework12/roc_auc_curves.png
   6. 老旧车辆高额索赔 → 车辆价值与索赔金额不匹配
 
 【模型推荐】
-  推荐使用随机森林模型，其在特征重要性解释性和预测性能方面
-  均有良好表现，适合保险反欺诈场景的部署。
+  综合验证集AUC，推荐使用决策树模型（AUC=0.863, F1=0.6154, 召回率=0.5556），
+  其在反欺诈识别性能上表现最优，适合作为车险索赔欺诈的初步筛查模型。
+  特征重要性分析采用随机森林的解释性输出，辅助业务理解高风险因素。
 
 【风控建议】
   1. 建立实时欺诈评分机制，对高风险案件进行人工复核
@@ -390,12 +391,13 @@ ROC/AUC曲线已保存至 outputs/homework12/roc_auc_curves.png
 ======================================================================
 第九步：生成测试集预测结果
 ======================================================================
+  按验证集AUC选择最优模型: 决策树 (AUC=0.863)
 测试集预测结果已保存至 outputs/homework12\test_predictions.csv
 测试集预测结果（含概率）已保存至 outputs/homework12\test_predictions_with_prob.csv
 
 预测统计:
-  预测为欺诈: 42 条 (14.0%)
-  预测为正常: 258 条
+  预测为欺诈: 67 条 (22.3%)
+  预测为正常: 233 条
 
 清洗后数据已保存至 outputs/homework12/train_cleaned.csv 和 test_cleaned.csv
 

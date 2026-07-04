@@ -8,7 +8,7 @@
 | quality.py / main.py | IC/IR + 共线性双质检 | 原质检结果仅输出报告，未进入 LGBM 训练路径；若未来出现剔除因子，模型仍会误用全部因子。 | 已修复：main.py 使用 qc['kept_factors'] 作为 train_lgbm、ic_directions、composite_score 的 factor_cols。 |
 | model.py | LGBM 训练与交叉验证 | 原 GroupKFold 只防同月截面泄漏，不保证训练月份早于验证月份，报告中的“防时间泄漏”表述不严谨。 | 已修复：改为按 signal_date 月份递进的扩展窗口验证，训练月严格早于验证月。 |
 | backtest.py / robustness.py | 回撤触发减仓风控 | 原风控减仓只缩放收益，未扣除降仓/恢复仓产生的额外换手成本，达标版本偏乐观。 | 已修复：暴露变化按 cost_rate 计入 risk_control_turnover / risk_control_cost，并汇总到月度成本。 |
-| main.py / report.py | 提交材料与报告生成 | 原 AI 审核表和交互记录末尾字符串未拼接导致截断，且 Word 报告未包含 AI 审核/交互记录。 | 已修复：补全字符串拼接，并将 AI 审核表、交互记录写入 Markdown 与 Word 报告。 |
+| main.py / report.py | 提交材料与报告生成 | 原 AI 审核表和交互记录末尾字符串未拼接导致截断，且 LaTeX 附录未完整纳入 AI 审核/交互记录。 | 已修复：补全字符串拼接，并将 AI 审核表、交互记录写入 Markdown 与 LaTeX 附录。 |
 | backtest.py / report.py | 交易执行口径 | 配套行业行情无 open 字段，无法严格模拟“次日开盘成交”。 | 已说明：采用月末收盘到次月末收盘的收盘价代理口径，并在报告中明确数据限制。 |
 
 **审核方式**：AI（编程辅助）+ 人工逐模块核验。关键修复覆盖样本划分、因子质检接入、时序交叉验证、风控成本和提交材料完整性，均经重新运行复核后落地。

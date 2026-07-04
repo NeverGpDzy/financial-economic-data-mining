@@ -162,7 +162,10 @@ def apply_drawdown_control(result: BacktestResult, trigger_dd: float = -0.06,
     暴露调整产生的额外换手按 cost_rate 扣费。
     返回新的风险控制后回测结果（基准不变）。
     """
-    daily_ret = result.nav.pct_change().fillna(0.0)
+    daily_ret = result.nav.pct_change()
+    if not daily_ret.empty:
+        daily_ret.iloc[0] = result.nav.iloc[0] - 1.0
+    daily_ret = daily_ret.fillna(0.0)
     new_rets = []
     nav_vals = []
     exposures = []

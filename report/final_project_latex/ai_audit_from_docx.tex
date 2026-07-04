@@ -65,7 +65,7 @@ AI生成内容占比 & 70\%（AI辅助生成代码与报告，人工审查、口
 1.2 & 时间戳严格递增：数据加载、信号计算、交易执行按时间顺序执行，无乱序访问 & final\_\allowbreak{}project/\allowbreak{}data\_\allowbreak{}loader.py:82-92 & 三份CSV先转 Timestamp，再按共同交易日升序对齐，月末交易日按日历月最大交易日生成。 & 低(P2) & 已修复 & common\_\allowbreak{}dates 排序后统一索引，month\_\allowbreak{}ends=\_\allowbreak{}month\_\allowbreak{}end\_\allowbreak{}dates(common\_\allowbreak{}dates)。 \\
 1.3 & 信号与交易分离：今日计算的信号，仅用于次日/\allowbreak{}下一个周期交易，无「当日信号当日成交」 & final\_\allowbreak{}project/\allowbreak{}backtest.py:94-125；config.py:88 & 配套申万行业数据无 open 字段，无法严格次日开盘成交；使用月末收盘到次月末收盘的代理口径。 & 中(P1) & 已修复 & 已在报告中明确“行业指数仅有收盘价，以月末收盘执行”；交易日收益只取 (d,d\_\allowbreak{}next]。 \\
 1.4 & 样本数据严格隔离：训练集/\allowbreak{}测试集/\allowbreak{}回测集无数据泄露，无「用未来数据优化参数」 & final\_\allowbreak{}project/\allowbreak{}model.py:20-74；main.py:61-68 & 原 GroupKFold 仅防同月截面泄漏，不保证训练月早于验证月；质检保留因子原未接入模型。 & 高(P0) & 已修复 & 改为 \_\allowbreak{}time\_\allowbreak{}ordered\_\allowbreak{}month\_\allowbreak{}splits；训练月严格早于验证月；factor\_\allowbreak{}cols=qc["kept\_\allowbreak{}factors"] 进入 LGBM 与打分。 \\
-1.5 & 漂移测试通过：删除未来数据后，策略信号与核心逻辑保持稳定，无隐性未来函数 & python -m final\_\allowbreak{}project.main --build-docx & 删除未来月份后，主流程可复现；2025样本外仍只使用2024-12及以前信号生成1月持仓。 & 中(P1) & 已修复 & 已重新运行完整流程，输出 metrics\_\allowbreak{}primary.csv 与 metrics\_\allowbreak{}final\_\allowbreak{}risk\_\allowbreak{}control.csv。 \\
+1.5 & 漂移测试通过：删除未来数据后，策略信号与核心逻辑保持稳定，无隐性未来函数 & python -m final\_\allowbreak{}project.main & 删除未来月份后，主流程可复现；2025样本外仍只使用2024-12及以前信号生成1月持仓。 & 中(P1) & 已修复 & 已重新运行完整流程，输出 metrics\_\allowbreak{}primary.csv 与 metrics\_\allowbreak{}final\_\allowbreak{}risk\_\allowbreak{}control.csv。 \\
 \end{longtable}
 \endgroup
 \subsubsection*{模块2：因子与数据处理专项审查（高频快变量专属）}
@@ -113,7 +113,7 @@ AI生成内容占比 & 70\%（AI辅助生成代码与报告，人工审查、口
 \endlastfoot
 3.1 & 交易成本完整：已嵌入佣金+印花税+滑点（综合成本≥0.3\%），无零成本理想化回测 & final\_\allowbreak{}project/\allowbreak{}backtest.py:99-125,155-216 & 基线调仓成本已计入；原回撤减仓未计入额外换手成本，已补。 & 中(P1) & 已修复 & nr = exposure * r - extra\_\allowbreak{}cost；monthly 增加 risk\_\allowbreak{}control\_\allowbreak{}turnover /\allowbreak{} risk\_\allowbreak{}control\_\allowbreak{}cost。 \\
 3.2 & 仓位合规：单只个股仓位≤30\%，账户总仓位≤80\%，无满仓/\allowbreak{}重仓梭哈 & final\_\allowbreak{}project/\allowbreak{}backtest.py:40-60；config.py:83-85 & 单行业上限30\%；Top5等权20\%不触发，Top3超额部分留现金。本题要求行业组合100\%配置，账户80\%规则不适用。 & 低(P2) & 已修复 & w=np.minimum(w, cap)，不向上重分配，超出部分保留现金。 \\
-3.3 & 止损机制完善：单笔交易止损≤5\%，账户总回撤控制≤15\%，有明确的风险触发规则 & final\_\allowbreak{}project/\allowbreak{}backtest.py:155-216；outputs/\allowbreak{}final\_\allowbreak{}project/\allowbreak{}metrics\_\allowbreak{}final\_\allowbreak{}risk\_\allowbreak{}control.csv & 组合回撤触发减仓已实证；扣除新增成本后最终风控版年化14.58\%、最大回撤-9.87\%。 & 高(P0) & 已修复 & trig-5\%\_\allowbreak{}exp40\% 同时满足年化12\%-18\%和回撤≤10\%。 \\
+3.3 & 止损机制完善：单笔交易止损≤5\%，账户总回撤控制≤15\%，有明确的风险触发规则 & final\_\allowbreak{}project/\allowbreak{}backtest.py:155-216；outputs/\allowbreak{}final\_\allowbreak{}project/\allowbreak{}metrics\_\allowbreak{}final\_\allowbreak{}risk\_\allowbreak{}control.csv & 组合回撤触发减仓已实证；扣除新增成本后最终风控版年化14.53\%、最大回撤-9.41\%。 & 高(P0) & 已修复 & trig-4.5\%\_\allowbreak{}exp40\%\_\allowbreak{}rec-3\% 同时满足年化12\%-18\%和回撤≤10\%。 \\
 3.4 & 流动性过滤：已剔除小盘股/\allowbreak{}低流动性品种，无「无法按理想价格成交」的标的 & final\_\allowbreak{}project/\allowbreak{}data\_\allowbreak{}loader.py:58-66；industry\_\allowbreak{}codes.py & 标的是申万一级行业指数，不直接交易小盘个股；流动性风险在报告中说明为ETF代理风险。 & 低(P2) & 已修复 & 31个行业代码固定映射，不做不可交易个股扫描。 \\
 3.5 & 调仓频率合规：周调仓次数≤2次，禁止日内交易/\allowbreak{}高频刷单，符合班级规则 & final\_\allowbreak{}project/\allowbreak{}config.py:83-88；backtest.py:94-95 & 策略为月度调仓，不进行日内/\allowbreak{}高频交易；持有区间为下一月交易日。 & 低(P2) & 已修复 & REBALANCE\_\allowbreak{}FREQ="M"，hold\_\allowbreak{}days=(d,d\_\allowbreak{}next]。 \\
 \end{longtable}
@@ -136,11 +136,11 @@ AI生成内容占比 & 70\%（AI辅助生成代码与报告，人工审查、口
 \endfoot
 \bottomrule
 \endlastfoot
-4.1 & 无AI幻觉：无虚构的API/\allowbreak{}函数/\allowbreak{}库调用，所有import的依赖真实存在且版本兼容 & requirements.txt；python -m compileall -q final\_\allowbreak{}project & 未发现虚构API；依赖 pandas/\allowbreak{}numpy/\allowbreak{}scipy/\allowbreak{}sklearn/\allowbreak{}lightgbm/\allowbreak{}python-docx 均可导入。 & 低(P2) & 已修复 & 已通过 compileall 和完整主流程运行。 \\
+4.1 & 无AI幻觉：无虚构的API/\allowbreak{}函数/\allowbreak{}库调用，所有import的依赖真实存在且版本兼容 & requirements.txt；python -m compileall -q final\_\allowbreak{}project & 未发现虚构API；依赖 pandas/\allowbreak{}numpy/\allowbreak{}scipy/\allowbreak{}sklearn/\allowbreak{}lightgbm 均可导入。 & 低(P2) & 已修复 & 已通过 compileall 和完整主流程运行。 \\
 4.2 & 无逻辑矛盾：条件判断无冲突，交易方向明确，无「同时买入和卖出」的悖论代码 & final\_\allowbreak{}project/\allowbreak{}main.py:61-68；robustness.py:73-81 & 原质检与模型路径存在断点；方法敏感性已显式使用同一 factor\_\allowbreak{}cols。 & 中(P1) & 已修复 & composite\_\allowbreak{}score(..., model\_\allowbreak{}result["factor\_\allowbreak{}cols"])。 \\
 4.3 & 无过度拟合：策略在样本外数据表现稳定，无「回测收益极高、实盘持续亏损」的过拟合问题 & final\_\allowbreak{}project/\allowbreak{}model.py:20-74；outputs/\allowbreak{}final\_\allowbreak{}project/\allowbreak{}robustness\_\allowbreak{}time.csv & 原CV可能时序泄漏；策略2024跑输、2025跑赢，报告如实呈现机制依赖。 & 高(P0) & 已修复 & 扩展窗口CV + 2024/\allowbreak{}2025时间敏感性测试，未掩盖样本外风险。 \\
 4.4 & 无硬编码参数：关键参数（如持仓周期、止损比例、因子窗口）可配置，无AI固定死的魔法数字 & final\_\allowbreak{}project/\allowbreak{}config.py & 关键窗口、阈值、成本、TopN、风控目标均集中配置，无散落魔法数字。 & 低(P2) & 已修复 & MOM\_\allowbreak{}MID\_\allowbreak{}WINDOW、COST\_\allowbreak{}RATE、TOP\_\allowbreak{}N\_\allowbreak{}DEFAULT 等统一管理。 \\
-4.5 & 无冗余代码：AI生成的重复逻辑、无效循环、未使用的变量已删除，代码简洁高效 & final\_\allowbreak{}project/\allowbreak{}report.py:338-365；build\_\allowbreak{}docx & 原AI审核/\allowbreak{}交互记录字符串截断，Word报告未内嵌AI记录；已修复。 & 中(P1) & 已修复 & 新增 \_\allowbreak{}ai\_\allowbreak{}review\_\allowbreak{}rows /\allowbreak{} \_\allowbreak{}ai\_\allowbreak{}interaction\_\allowbreak{}items，Markdown与Word共用同一数据源。 \\
+4.5 & 无冗余代码：AI生成的重复逻辑、无效循环、未使用的变量已删除，代码简洁高效 & final\_\allowbreak{}project/\allowbreak{}report.py & 原AI审核/\allowbreak{}交互记录字符串截断，LaTeX附录未完整纳入AI记录；已修复。 & 中(P1) & 已修复 & 新增 \_\allowbreak{}ai\_\allowbreak{}review\_\allowbreak{}rows /\allowbreak{} \_\allowbreak{}ai\_\allowbreak{}interaction\_\allowbreak{}items，Markdown与LaTeX附录共用同一数据源。 \\
 \end{longtable}
 \endgroup
 \subsubsection*{模块5：代码可读性与可维护性审查}
@@ -165,7 +165,7 @@ AI生成内容占比 & 70\%（AI辅助生成代码与报告，人工审查、口
 5.2 & 命名规范：变量、函数、类名符合行业标准，见名知意，无AI生成的无意义命名 & final\_\allowbreak{}project/\allowbreak{}*.py & 变量名围绕 market/\allowbreak{}panel/\allowbreak{}factor/\allowbreak{}score/\allowbreak{}nav/\allowbreak{}metrics，含义清晰。 & 低(P2) & 已修复 & 未发现无意义命名。 \\
 5.3 & 结构清晰：代码按「数据加载→因子计算→信号生成→交易执行→风控→回测」模块化拆分，无单文件堆砌 & final\_\allowbreak{}project/\allowbreak{} & 已按数据加载、因子、质检、模型、回测、鲁棒性、报告拆分模块。 & 低(P2) & 已修复 & main.py 负责流程编排。 \\
 5.4 & 错误处理完善：有完整的try-catch异常捕获，网络/\allowbreak{}数据/\allowbreak{}计算异常有明确的处理逻辑 & final\_\allowbreak{}project/\allowbreak{}data\_\allowbreak{}loader.py:82-88；factors.py:81-88 & 对齐和因子取值有防御性处理；无网络下载依赖。 & 低(P2) & 已修复 & common\_\allowbreak{}dates 交集对齐；KeyError月份跳过。 \\
-5.5 & 结果可复现：随机种子固定，回测结果可100\%复现，无AI生成的随机波动代码 & final\_\allowbreak{}project/\allowbreak{}config.py:116-130；python -m final\_\allowbreak{}project.main --build-docx & 随机种子固定，输出可复现；已重新生成CSV、图表、Markdown与Word。 & 低(P2) & 已修复 & LGBM random\_\allowbreak{}state=42；完整流程运行成功。 \\
+5.5 & 结果可复现：随机种子固定，回测结果可100\%复现，无AI生成的随机波动代码 & final\_\allowbreak{}project/\allowbreak{}config.py:116-130；python -m final\_\allowbreak{}project.main & 随机种子固定，输出可复现；已重新生成CSV、图表、Markdown与LaTeX报告。 & 低(P2) & 已修复 & LGBM random\_\allowbreak{}state=42；完整流程运行成功。 \\
 \end{longtable}
 \endgroup
 \clearpage
@@ -187,8 +187,8 @@ AI生成内容占比 & 70\%（AI辅助生成代码与报告，人工审查、口
 \endfoot
 \bottomrule
 \endlastfoot
-本次AI生成代码的核心缺陷TOP3 & 1. GroupKFold不满足时序验证，可能造成验证泄漏。\newline{} 2. 因子质检结果未接入LGBM训练与打分。\newline{} 3. 风控减仓未计入额外交易成本，且AI审核/\allowbreak{}交互材料未写入Word报告。 \\
-人工修复与优化的核心亮点 & 1. 改为按月份扩展窗口验证，训练月严格早于验证月。\newline{} 2. 使用 qc["kept\_\allowbreak{}factors"] 驱动建模，并输出最终风控版净值/\allowbreak{}指标。\newline{} 3. 风控成本、AI附录、老师审查表全部补齐，重跑生成Word报告。 \\
+本次AI生成代码的核心缺陷TOP3 & 1. GroupKFold不满足时序验证，可能造成验证泄漏。\newline{} 2. 因子质检结果未接入LGBM训练与打分。\newline{} 3. 风控减仓成本和首日收益口径需要复核，且AI审核/\allowbreak{}交互材料未完整写入LaTeX附录。 \\
+人工修复与优化的核心亮点 & 1. 改为按月份扩展窗口验证，训练月严格早于验证月。\newline{} 2. 使用 qc["kept\_\allowbreak{}factors"] 驱动建模，并输出最终风控版净值/\allowbreak{}指标。\newline{} 3. 风控成本、首日收益口径、AI附录和老师审查表全部补齐，重跑生成LaTeX报告。 \\
 本次策略最终合规性结论 & \checkedbox{} 完全合规（所有P0/\allowbreak{}P1问题已修复；行业数据无open字段，已明确使用收盘价代理执行口径）\newline{} \uncheckedbox{} 基本合规（仅剩余低优先级优化问题）\newline{} \uncheckedbox{} 不合规（存在未修复的致命缺陷） \\
 对AI在量化高频策略中局限性的总结反思 & AI在量化策略中容易把“能跑通”误认为“无泄漏、可交易”：典型风险包括时序切分不严格、质检结果未真正进入模型、风控成本理想化、报告与代码输出不一致。因此必须由人工逐项核查时间线、成本、样本隔离和提交材料完整性。 \\
 \end{longtable}
